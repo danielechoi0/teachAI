@@ -7,7 +7,7 @@ let gainNode = null;
 let analyserNode = null;
 let levelCheckInterval = null;
 
-// Transcription buffers
+// Transcription buffers - Always collect audio, not just when transcribing
 let audioBufferForTranscription = [];
 let transcriptionInterval = null;
 
@@ -39,9 +39,15 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
   /** ----------------  transcription timer  ---------------- **/
   useEffect(() => {
     if (isTranscribing && isListening) {
+      // Process immediately if we have audio data
+      if (audioBufferForTranscription.length > 0) {
+        processAudioBufferForTranscription();
+      }
+      
+      // Then set up interval for ongoing processing
       transcriptionInterval = setInterval(() => {
         processAudioBufferForTranscription();
-      }, 10000); // Every 30 seconds
+      }, 8000); // Every 8 seconds for more responsive grading
      
       return () => {
         if (transcriptionInterval) {
@@ -63,7 +69,7 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
         setStatus(s); 
         setIsListening(s === "connected"); 
       },
-      onAudioData: isTranscribing ? collectAudioForTranscription : null
+      onAudioData: collectAudioForTranscription // Always collect audio
     }).catch((error) => {
       console.error("Audio start error:", error);
       setStatus("error");
@@ -87,14 +93,11 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
 
   /** ----------------  transcription functions  ---------------- **/
   const collectAudioForTranscription = (audioData) => {
-    if (!isTranscribing) return;
-   
-    // Store audio data for transcription (keep last 30 seconds worth)
+    // Always collect audio data, regardless of transcription state
     audioBufferForTranscription.push(audioData);
    
-    // Rough calculation: 30 seconds at 16kHz = 480,000 samples
-    // Keep buffer manageable by removing old data
-    const maxSamples = 30 * rate; // 30 seconds worth
+    // Keep buffer manageable (last 20 seconds worth)
+    const maxSamples = 20 * rate; // 20 seconds worth
     let totalSamples = audioBufferForTranscription.reduce((sum, chunk) => sum + chunk.length, 0);
    
     while (totalSamples > maxSamples && audioBufferForTranscription.length > 1) {
@@ -104,10 +107,16 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
   };
 
   const processAudioBufferForTranscription = async () => {
-    if (audioBufferForTranscription.length === 0 || isProcessing) return;
+    if (audioBufferForTranscription.length === 0 || isProcessing) {
+      console.log("⏸️ No audio data to process or already processing");
+      return;
+    }
    
     setIsProcessing(true);
-    console.log("🎙️ Processing audio buffer for transcription...");
+    console.log("🎙️ Processing audio buffer for transcription...", {
+      chunks: audioBufferForTranscription.length,
+      totalSamples: audioBufferForTranscription.reduce((sum, chunk) => sum + chunk.length, 0)
+    });
    
     try {
       // Combine all audio chunks into a single buffer
@@ -123,7 +132,10 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
       // Convert to WAV format for transcription
       const wavBuffer = encodeWAV(combinedBuffer, rate);
      
-      console.log("📤 Sending audio for transcription...");
+      console.log("📤 Sending audio for transcription...", {
+        audioLengthSeconds: totalLength / rate,
+        wavSizeKB: Math.round(wavBuffer.byteLength / 1024)
+      });
       
       // Send to backend for transcription
       const response = await fetch('/transcribe-audio', {
@@ -144,7 +156,7 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
         
         console.log("📝 Transcription result:", transcript);
        
-        if (transcript && transcript.trim()) {
+        if (transcript && transcript.trim().length > 5) { // Only process meaningful transcripts
           setCurrentTranscript(prev => prev + " " + transcript);
          
           console.log("📊 Sending for grading...");
@@ -176,11 +188,15 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
               grade: gradeResult.grade
             }]);
           } else {
-            console.error("❌ Grading failed:", gradeResponse.status, await gradeResponse.text());
+            const errorText = await gradeResponse.text();
+            console.error("❌ Grading failed:", gradeResponse.status, errorText);
           }
+        } else {
+          console.log("🔇 Transcript too short or empty, skipping grading");
         }
       } else {
-        console.error("❌ Transcription failed:", response.status, await response.text());
+        const errorText = await response.text();
+        console.error("❌ Transcription failed:", response.status, errorText);
       }
      
       // Clear the buffer after processing
@@ -194,13 +210,25 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
   };
 
   const toggleTranscription = () => {
+    console.log("🔄 Toggling transcription:", !isTranscribing);
     setIsTranscribing(!isTranscribing);
+    
     if (!isTranscribing) {
       // Reset transcription state when starting
       setCurrentTranscript("");
       setCurrentGrade(null);
       setTranscriptionHistory([]);
+      console.log("🆕 Transcription state reset, starting grading...");
+      
+      // If we have audio data and are listening, process immediately
+      if (isListening && audioBufferForTranscription.length > 0) {
+        console.log("⚡ Processing existing audio data immediately...");
+        setTimeout(() => processAudioBufferForTranscription(), 1000);
+      }
+    } else {
+      // When stopping transcription, clear the buffer
       audioBufferForTranscription = [];
+      console.log("⏹️ Transcription stopped, buffer cleared");
     }
   };
 
@@ -232,13 +260,16 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
         {/* Transcription toggle */}
         <button
           onClick={toggleTranscription}
+          disabled={!isListening}
           className={`px-3 py-1 rounded text-sm ${
-            isTranscribing 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
-              : 'bg-gray-100 text-gray-800 border border-gray-200'
+            !isListening 
+              ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+              : isTranscribing 
+                ? 'bg-green-100 text-green-800 border border-green-200' 
+                : 'bg-gray-100 text-gray-800 border border-gray-200 hover:bg-gray-200'
           }`}
         >
-          {isTranscribing ? "🎙️ Recording" : "📝 Start Grading"}
+          {isTranscribing ? "🎙️ Grading Active" : "📝 Start Grading"}
         </button>
 
         {/* Current grade display */}
@@ -256,8 +287,15 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
 
         {/* Processing indicator */}
         {isProcessing && (
-          <div className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm">
-            Processing...
+          <div className="px-2 py-1 bg-blue-100 text-blue-600 rounded text-sm animate-pulse">
+            🔄 Processing...
+          </div>
+        )}
+
+        {/* Audio buffer indicator */}
+        {isListening && (
+          <div className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+            Buffer: {audioBufferForTranscription.length} chunks
           </div>
         )}
 
@@ -298,12 +336,23 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
       {/* Transcription history */}
       {transcriptionHistory.length > 0 && (
         <div className="mt-2 p-2 bg-gray-50 rounded max-h-32 overflow-y-auto">
-          <h4 className="text-sm font-medium mb-2">Recent Transcripts:</h4>
+          <h4 className="text-sm font-medium mb-2">Recent Transcripts ({transcriptionHistory.length}):</h4>
           {transcriptionHistory.slice(-3).map((item, index) => (
             <div key={index} className="text-xs mb-1 p-1 bg-white rounded">
-              <span className="font-medium">Grade {item.grade}:</span> {item.transcript}
+              <span className="font-medium text-blue-600">Grade {item.grade}:</span> 
+              <span className="text-gray-700">{item.transcript}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Debug info */}
+      {isTranscribing && (
+        <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
+          Status: {isTranscribing ? 'Active' : 'Inactive'} | 
+          Processing: {isProcessing ? 'Yes' : 'No'} | 
+          Audio chunks: {audioBufferForTranscription.length} | 
+          Transcripts: {transcriptionHistory.length}
         </div>
       )}
     </div>

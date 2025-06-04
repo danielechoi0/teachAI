@@ -31,44 +31,6 @@ export default function App() {
 
   // Replace your startCall function with this corrected version
   async function startCall() {
-    
-    const send_response_tool = {
-      "type": "function",
-      "function": {
-        "name": "getGrade",
-        "description": "Sends the user's last response to be assessed and returns a grade",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "response": {
-              "type": "string",
-              "description": "User's last response"
-            },
-            "num_response": {
-              "type": "string", 
-              "description": "Number of responses so far"
-            },
-            "question": {
-              "type": "string",
-              "description": "Question/Statement from assistant that prompted last user's response"
-            },
-            "grade": {
-              "type": "string",
-              "description": "Current user grade in conversation"
-            },
-            "language": {
-              "type": "string",
-              "description": "Language of conversation"
-            }
-          },
-          "required": ["response", "grade", "language", "question"]
-        }
-      },
-      "async": false,
-      "server": {
-        "url": BACKEND_URL + "/get-grade"
-      }
-    };
 
     const assistantConfig = {
       "model": {
@@ -81,7 +43,6 @@ export default function App() {
             "content": systemPrompt
           }
         ],
-        "tools": [send_response_tool]
       },
       "voice": {
         "provider": "playht",
