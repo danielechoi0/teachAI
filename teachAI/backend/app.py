@@ -271,6 +271,7 @@ Student transcript: "{transcript}"
 
 Evaluate fluency, grammar, vocabulary, and engagement. Respond with ONLY a single letter: A, B, C, D, or F.
 <|end_header_id|><|start_header_id|>assistant<|end_header_id|>"""
+            print("Grading", flush=True)
 
             HF_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct"
             HF_API_KEY = os.getenv("HF_API_KEY")

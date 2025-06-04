@@ -41,7 +41,7 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
     if (isTranscribing && isListening) {
       transcriptionInterval = setInterval(() => {
         processAudioBufferForTranscription();
-      }, 30000); // Every 30 seconds
+      }, 10000); // Every 30 seconds
      
       return () => {
         if (transcriptionInterval) {
