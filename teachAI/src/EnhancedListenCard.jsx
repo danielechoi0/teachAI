@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 
-
 const rate = 16000; // Hz
 let audioContext = null;
 let ws = null;
@@ -8,28 +7,26 @@ let gainNode = null;
 let analyserNode = null;
 let levelCheckInterval = null;
 
-
 // Transcription buffers
 let audioBufferForTranscription = [];
 let transcriptionInterval = null;
 
-
 export default function EnhancedListenCard({ callId, student, listenUrl, startTime }) {
-  const [isListening, setIsListening]   = useState(false);
-  const [status, setStatus]             = useState("disconnected");
-  const [audioLevel, setAudioLevel]     = useState(0);
-  const [volume, setVolume]             = useState(1);
-  const [isMuted, setIsMuted]           = useState(false);
-  const [duration, setDuration]         = useState(0);
+  const [isListening, setIsListening] = useState(false);
+  const [status, setStatus] = useState("disconnected");
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [duration, setDuration] = useState(0);
  
   // Transcription states
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
   const [currentGrade, setCurrentGrade] = useState(null);
   const [transcriptionHistory, setTranscriptionHistory] = useState([]);
+  const [isProcessing, setIsProcessing] = useState(false);
  
   const timerRef = useRef();
-
 
   /** ----------------  call timer  ---------------- **/
   useEffect(() => {
@@ -38,7 +35,6 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
     }, 1000);
     return () => clearInterval(timerRef.current);
   }, [startTime]);
-
 
   /** ----------------  transcription timer  ---------------- **/
   useEffect(() => {
@@ -56,19 +52,23 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
     }
   }, [isTranscribing, isListening]);
 
-
   /** ----------------  start / stop  ---------------- **/
   const listen = () => {
     if (isListening || !listenUrl) return;
     setStatus("connecting");
     startAudio(listenUrl, {
       volume: isMuted ? 0 : volume,
-      onLevel : setAudioLevel,
-      onStatus: (s) => { setStatus(s); setIsListening(s === "connected"); },
+      onLevel: setAudioLevel,
+      onStatus: (s) => { 
+        setStatus(s); 
+        setIsListening(s === "connected"); 
+      },
       onAudioData: isTranscribing ? collectAudioForTranscription : null
-    }).catch(() => setStatus("error"));
+    }).catch((error) => {
+      console.error("Audio start error:", error);
+      setStatus("error");
+    });
   };
-
 
   const stop = () => {
     stopAudio().finally(() => {
@@ -84,7 +84,6 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
       }
     });
   };
-
 
   /** ----------------  transcription functions  ---------------- **/
   const collectAudioForTranscription = (audioData) => {
@@ -104,9 +103,11 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
     }
   };
 
-
   const processAudioBufferForTranscription = async () => {
-    if (audioBufferForTranscription.length === 0) return;
+    if (audioBufferForTranscription.length === 0 || isProcessing) return;
+   
+    setIsProcessing(true);
+    console.log("🎙️ Processing audio buffer for transcription...");
    
     try {
       // Combine all audio chunks into a single buffer
@@ -122,6 +123,8 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
       // Convert to WAV format for transcription
       const wavBuffer = encodeWAV(combinedBuffer, rate);
      
+      console.log("📤 Sending audio for transcription...");
+      
       // Send to backend for transcription
       const response = await fetch('/transcribe-audio', {
         method: 'POST',
@@ -138,10 +141,14 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
       if (response.ok) {
         const result = await response.json();
         const transcript = result.transcript;
+        
+        console.log("📝 Transcription result:", transcript);
        
         if (transcript && transcript.trim()) {
           setCurrentTranscript(prev => prev + " " + transcript);
          
+          console.log("📊 Sending for grading...");
+          
           // Send for grading
           const gradeResponse = await fetch('/grade-transcript', {
             method: 'POST',
@@ -158,6 +165,8 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
          
           if (gradeResponse.ok) {
             const gradeResult = await gradeResponse.json();
+            console.log("📈 Grade result:", gradeResult);
+            
             setCurrentGrade(gradeResult.grade);
            
             // Add to history
@@ -166,18 +175,23 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
               transcript: transcript,
               grade: gradeResult.grade
             }]);
+          } else {
+            console.error("❌ Grading failed:", gradeResponse.status, await gradeResponse.text());
           }
         }
+      } else {
+        console.error("❌ Transcription failed:", response.status, await response.text());
       }
      
       // Clear the buffer after processing
       audioBufferForTranscription = [];
      
     } catch (error) {
-      console.error('Error processing transcription:', error);
+      console.error('❌ Error processing transcription:', error);
+    } finally {
+      setIsProcessing(false);
     }
   };
-
 
   const toggleTranscription = () => {
     setIsTranscribing(!isTranscribing);
@@ -190,17 +204,14 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
     }
   };
 
-
   /** ----------------  volume / mute  ---------------- **/
   useEffect(() => {
     if (!isListening || !gainNode) return;
     gainNode.gain.value = isMuted ? 0 : volume;
   }, [volume, isMuted, isListening]);
 
-
   /** ----------------  cleanup  ---------------- **/
   useEffect(() => stop, []);
-
 
   /** ----------------  UI  ---------------- **/
   return (
@@ -210,7 +221,6 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
         <span className="text-xs italic">{status}</span>
       </div>
 
-
       <div className="flex items-center gap-4">
         <button
           onClick={isListening ? stop : listen}
@@ -219,14 +229,37 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
           {isListening ? "Stop" : "Listen"}
         </button>
 
+        {/* Transcription toggle */}
+        <button
+          onClick={toggleTranscription}
+          className={`px-3 py-1 rounded text-sm ${
+            isTranscribing 
+              ? 'bg-green-100 text-green-800 border border-green-200' 
+              : 'bg-gray-100 text-gray-800 border border-gray-200'
+          }`}
+        >
+          {isTranscribing ? "🎙️ Recording" : "📝 Start Grading"}
+        </button>
 
         {/* Current grade display */}
         {currentGrade && (
-          <div className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
+          <div className={`px-2 py-1 rounded text-sm font-medium ${
+            currentGrade === 'A' ? 'bg-green-100 text-green-800' :
+            currentGrade === 'B' ? 'bg-blue-100 text-blue-800' :
+            currentGrade === 'C' ? 'bg-yellow-100 text-yellow-800' :
+            currentGrade === 'D' ? 'bg-orange-100 text-orange-800' :
+            'bg-red-100 text-red-800'
+          }`}>
             Grade: {currentGrade}
           </div>
         )}
 
+        {/* Processing indicator */}
+        {isProcessing && (
+          <div className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-sm">
+            Processing...
+          </div>
+        )}
 
         {/* VU-meter */}
         <div className="h-2 w-24 bg-gray-200 rounded overflow-hidden">
@@ -236,13 +269,11 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
           />
         </div>
 
-
         {/* Call duration */}
         <span className="ml-auto text-sm text-gray-500">
           {new Date(duration * 1000).toISOString().substr(14, 5)}
         </span>
       </div>
-
 
       {/* Volume & mute */}
       <div className="flex items-center gap-2">
@@ -263,12 +294,23 @@ export default function EnhancedListenCard({ callId, student, listenUrl, startTi
           {isMuted ? "Un-mute" : "Mute"}
         </button>
       </div>
+
+      {/* Transcription history */}
+      {transcriptionHistory.length > 0 && (
+        <div className="mt-2 p-2 bg-gray-50 rounded max-h-32 overflow-y-auto">
+          <h4 className="text-sm font-medium mb-2">Recent Transcripts:</h4>
+          {transcriptionHistory.slice(-3).map((item, index) => (
+            <div key={index} className="text-xs mb-1 p-1 bg-white rounded">
+              <span className="font-medium">Grade {item.grade}:</span> {item.transcript}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-
-// Helper function to encode audio as WAV
+// Helper function to encode audio as WAV (unchanged)
 function encodeWAV(audioBuffer, sampleRate) {
   const length = audioBuffer.length;
   const arrayBuffer = new ArrayBuffer(44 + length * 2);
@@ -306,45 +348,37 @@ function encodeWAV(audioBuffer, sampleRate) {
   return arrayBuffer;
 }
 
-
+// Audio functions (unchanged from original)
 async function startAudio(listenUrl, options = {}) {
     if (ws) {
         console.warn("Audio is already playing.");
         return;
     }
 
-
     const { volume = 1, onLevel, onStatus, onAudioData } = options;
-
 
     try {
         onStatus?.("connecting");
        
         audioContext = new AudioContext({ sampleRate: rate });
 
-
         await audioContext.audioWorklet.addModule('./audioProcessor.js');
-
 
         const audioNode = new AudioWorkletNode(audioContext, 'audio-processor', {
             outputChannelCount: [2],
         });
 
-
         gainNode = audioContext.createGain();
         gainNode.gain.value = volume;
-
 
         analyserNode = audioContext.createAnalyser();
         analyserNode.fftSize = 256;
         const dataArray = new Uint8Array(analyserNode.frequencyBinCount);
 
-
         // Connect the audio chain
         audioNode.connect(gainNode);
         gainNode.connect(analyserNode);
         analyserNode.connect(audioContext.destination);
-
 
         // Start audio level monitoring
         if (onLevel) {
@@ -358,22 +392,18 @@ async function startAudio(listenUrl, options = {}) {
         ws = new WebSocket(listenUrl);
         ws.binaryType = 'arraybuffer';
 
-
         ws.onopen = () => {
             onStatus?.("connected");
         };
-
 
         ws.onmessage = (event) => {
             if (event.data instanceof ArrayBuffer) {
                 const int16Array = new Int16Array(event.data);
                 const float32Array = new Float32Array(int16Array.length);
 
-
                 for (let i = 0; i < int16Array.length; i++) {
                     float32Array[i] = int16Array[i] / 32768.0;
                 }
-
 
                 // Send to audio playback
                 audioNode.port.postMessage({ audioData: float32Array });
@@ -385,12 +415,10 @@ async function startAudio(listenUrl, options = {}) {
             }
         };
 
-
         ws.onclose = () => {
             onStatus?.("disconnected");
             stopAudio();
         };
-
 
         ws.onerror = (error) => {
             console.error("WebSocket error:", error);
@@ -398,14 +426,12 @@ async function startAudio(listenUrl, options = {}) {
             stopAudio();
         };
 
-
     } catch (error) {
         console.error("Error starting audio:", error);
         onStatus?.("error");
         stopAudio();
     }
 }
-
 
 async function stopAudio() {
     console.log("Stopping audio.");

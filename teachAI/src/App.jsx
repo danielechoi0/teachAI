@@ -6,7 +6,6 @@ import {User, Phone, PhoneOff, Users, MessageSquare, Clock, TrendingUp, Volume2,
 
 // const VAPI_PUBLIC_API_KEY = import.meta.env.VITE_VAPI_PUBLIC_API_KEY;
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-const SERVER_URL = "https://bb9b-73-4-117-104.ngrok-free.app"
 const systemPrompt = `You are a Spanish assistant helping students practice conversation.
                       Be encouraging, patient, and helpful. Correct mistakes gently and provide useful vocabulary.
                       Keep conversations natural and engaging. Do not say you are AI.
@@ -67,7 +66,7 @@ export default function App() {
       },
       "async": false,
       "server": {
-        "url": SERVER_URL + "/get-grade"
+        "url": BACKEND_URL + "/get-grade"
       }
     };
 
@@ -90,7 +89,7 @@ export default function App() {
       },
       "firstMessage": `Hi ${studentName || 'there'}, how may I assist you today?`,
       "server": {
-        "url": SERVER_URL + "/vapi-webhook"
+        "url": BACKEND_URL + "/vapi-webhook"
       }
     };
 

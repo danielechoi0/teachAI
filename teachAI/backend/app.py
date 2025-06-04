@@ -248,7 +248,7 @@ def grade_transcript():
        
         # If no current grade, start with a neutral score
         if current_grade is None:
-            current_grade = "100"
+            current_grade = "B"  # Start with B grade
        
         # Convert letter grade to numeric if needed
         grade_mapping = {"A": 95, "B": 85, "C": 75, "D": 65, "F": 55}
@@ -258,65 +258,84 @@ def grade_transcript():
             try:
                 numeric_grade = float(current_grade)
             except:
-                numeric_grade = 75
+                numeric_grade = 85  # Default to B
        
-        prompt = f"""You are analyzing a 30-second transcript segment from a {detected_language} conversation practice session.
+        # Use HuggingFace API for grading - no fallback
+        try:
+            # Updated prompt for better results
+            prompt = f"""<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+You are a language learning assessment expert. Grade this {detected_language} conversation segment.
 
+Current grade: {current_grade}
+Student transcript: "{transcript}"
 
-Student: {student}
-Current conversation grade: {numeric_grade}/100
-Transcript segment: "{transcript}"
-Segment number: {segment_count + 1}
+Evaluate fluency, grammar, vocabulary, and engagement. Respond with ONLY a single letter: A, B, C, D, or F.
+<|end_header_id|><|start_header_id|>assistant<|end_header_id|>"""
 
+            HF_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct"
+            HF_API_KEY = os.getenv("HF_API_KEY")
+            
+            if not HF_API_KEY:
+                raise ValueError("HF_API_KEY not found in environment variables")
+            
+            # Make HuggingFace API request
+            headers = {
+                "Authorization": f"Bearer {HF_API_KEY}",
+                "Content-Type": "application/json"
+            }
 
-Evaluate this segment for:
-1. Fluency and naturalness
-2. Vocabulary usage and variety  
-3. Grammar accuracy
-4. Pronunciation (inferred from speech patterns)
-5. Conversational engagement
+            payload = {
+                "inputs": prompt,
+                "parameters": {
+                    "max_new_tokens": 10,
+                    "temperature": 0.1,
+                    "return_full_text": False
+                }
+            }
 
+            hf_response = requests.post(
+                HF_API_URL,
+                headers=headers,
+                json=payload,
+                timeout=15
+            )
 
-Calculate a new overall grade using this formula:
-New Grade = (Current Grade × {segment_count} + This Segment Score) / {segment_count + 1}
-
-
-Convert final numeric score to letter grade:
-90-100: A
-80-89: B  
-70-79: C
-60-69: D
-Below 60: F
-
-
-Respond with ONLY the letter grade (A, B, C, D, or F). No explanation or additional text."""
-
-
-        HF_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct"
-        HF_API_KEY = os.getenv("HF_API_KEY")  # Add this to your .env
-
-        headers = {
-            "Authorization": f"Bearer {HF_API_KEY}"
-        }
-
-        hf_response = requests.post(
-            HF_API_URL,
-            headers=headers,
-            json={"inputs": prompt},  # You can also use `parameters` if needed
-            timeout=30
-        )
-
-        if hf_response.status_code != 200:
-            return jsonify({"error": "HF API call failed", "details": hf_response.text}), 500
-
-        grade_result = hf_response.json()[0]["generated_text"].strip()
+            if hf_response.status_code == 200:
+                result = hf_response.json()
+                
+                # Handle different response formats
+                if isinstance(result, list) and len(result) > 0:
+                    generated_text = result[0].get("generated_text", "").strip()
+                else:
+                    generated_text = str(result).strip()
+                
+                # Extract letter grade from response
+                import re
+                grade_match = re.search(r'\b([ABCDF])\b', generated_text.upper())
+                if grade_match:
+                    grade_result = grade_match.group(1)
+                else:
+                    raise ValueError(f"Could not extract valid grade from HF response: {generated_text}")
+                    
+                print(f"🤖 HF API response: {generated_text}")
+                
+            elif hf_response.status_code == 503:
+                raise RuntimeError("Hugging Face model is currently loading. Please try again in a few minutes.")
+            else:
+                print("HF error", flush=True)
+                raise RuntimeError(f"Hugging Face API error {hf_response.status_code}: {hf_response.text}")
+                    
+        except Exception as e:
+            print(f"❌ HF API error: {e}")
+            # Re-raise the exception instead of using fallback
+            raise e
        
         # Update context
         if call_id in transcription_context:
             transcription_context[call_id]["current_grade"] = grade_result
             transcription_context[call_id]["segment_count"] = segment_count + 1
        
-        print(f"📈 Grade for {student}: {grade_result}")
+        print(f"📈 Final grade for {student}: {grade_result}")
        
         # Emit grade update to teachers
         socketio.emit("transcript_grade", {
@@ -327,13 +346,11 @@ Respond with ONLY the letter grade (A, B, C, D, or F). No explanation or additio
             "timestamp": time.time()
         }, namespace="/teacher")
 
-
         return jsonify({
             "success": True,
             "grade": grade_result,
             "segment_count": segment_count + 1
         })
-
 
     except Exception as e:
         print(f"❌ Error grading transcript: {e}")
