@@ -6,6 +6,8 @@ from flask_socketio import SocketIO, emit
 from dotenv import load_dotenv
 import os, requests, time, traceback
 from flask_cors import CORS
+from supabase import create_client
+
 
 load_dotenv()
 app = Flask(__name__)
@@ -17,6 +19,33 @@ PHONE_ID = os.getenv("VAPI_PHONE_NUMBER_ID")
 
 # Store active calls for better tracking
 active_calls = {}
+
+supabase = create_client(
+    os.getenv("SUPABASE_URL"),
+    os.getenv("SUPABASE_SERVICE_KEY")     # service role → full insert rights
+)
+
+def db_exec(query, context=""):
+    res = query.execute()
+    if res.error:
+        app.logger.error(f"Supabase error {context}: {res.error}")
+        raise RuntimeError(res.error)      # bubble a 500
+    return res.data
+
+def save_assistant_to_db(vapi_id: str, cfg: dict, teacher_id: str | None = None):
+    return db_exec(
+        supabase.table("assistants")
+        .upsert(
+            {
+                "vapi_id": vapi_id,
+                "cfg": cfg,
+                "teacher_id": teacher_id
+            },
+            on_conflict="vapi_id",      # ignore duplicates, update cfg if it changes
+            returning="id,vapi_id"
+        ),
+        context="upsert assistants"
+    )
 
 def create_assistant(cfg):
     r = requests.post(
@@ -67,8 +96,6 @@ def poll_listen_url(call_id, retries=30, delay=2):
     
     raise RuntimeError(f"listenUrl not ready after {retries} attempts")
 
-# Add this endpoint to your Flask backend (paste-2.txt)
-
 @app.route("/create-assistant", methods=["POST"])
 def create_assistant_endpoint():
     """Create a new assistant and return its ID"""
@@ -83,6 +110,7 @@ def create_assistant_endpoint():
         
         # Create the assistant using the existing create_assistant function
         assistant_id = create_assistant(cfg)
+        save_assistant_to_db(assistant_id, cfg, teacher_id=cfg.get("teacherId"))
         
         print(f"✅ Assistant created with ID: {assistant_id}")
         
@@ -97,19 +125,66 @@ def create_assistant_endpoint():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/assistants", methods=["GET"])
+def list_assistants():
+    try:
+        res = (
+            supabase
+            .table("assistants")
+            .select("id, vapi_id, cfg")  # Include cfg to extract name
+            .order("created_at", desc=True)
+            .execute()
+        )
+
+        if res.error:
+            app.logger.error(f"Supabase error: {res.error}")
+            return jsonify({"error": "Database error"}), 500
+
+        # Format the response to include assistant names
+        assistants = []
+        for assistant in res.data:
+            # Extract name from cfg or use a default
+            name = "Unnamed Assistant"
+            if assistant.get("cfg"):
+                # Try to get name from various possible locations in cfg
+                cfg = assistant["cfg"]
+                if isinstance(cfg, dict):
+                    name = (cfg.get("name") or 
+                           cfg.get("firstMessage", "Assistant")[:30] + "..." if len(cfg.get("firstMessage", "")) > 30 
+                           else cfg.get("firstMessage", "Assistant"))
+            
+            assistants.append({
+                "id": assistant["vapi_id"],  # Use vapi_id as the ID for calls
+                "name": name
+            })
+
+        return jsonify(assistants), 200
+
+    except Exception as e:
+        app.logger.exception("Unhandled error listing assistants")
+        return jsonify({"error": str(e)}), 500
+
+# Updated /start-call endpoint to accept assistantId instead of assistantConfig
 @app.route("/start-call", methods=["POST"])
 def start_phone_call():
     try:
         data = request.get_json()
-        cfg = data["assistantConfig"]
-        student_name = data["studentName"]
-        student_number = data["studentNumber"]
+        
+        # Now expecting assistantId instead of assistantConfig
+        assistant_id = data.get("assistantId")
+        student_name = data.get("studentName")
+        student_number = data.get("studentNumber")
+        
+        # Validate required fields
+        if not assistant_id:
+            return jsonify({"error": "Assistant ID is required"}), 400
+        if not student_name:
+            return jsonify({"error": "Student name is required"}), 400
+        if not student_number:
+            return jsonify({"error": "Student number is required"}), 400
 
-        print(f"📞 Starting call for {student_name} at {student_number}")
-        
-        # Create assistant and start call
-        assistant_id = create_assistant(cfg)
-        
+        print(f"📞 Starting call for {student_name} at {student_number} with assistant {assistant_id}")
+                
         call_id = start_call(assistant_id, student_name, student_number)
         
         # Get streaming URL
@@ -124,6 +199,14 @@ def start_phone_call():
             "assistantId": assistant_id
         }
         active_calls[call_id] = call_info
+
+        # Insert call record into database
+        supabase.table("calls").insert({
+            "id": call_id,
+            "assistant_id": assistant_id,  # This should match the vapi_id from assistants table
+            "student_name": student_name,
+            "listen_url": listen_url,
+        }).execute()
 
         # Notify all teacher dashboards
         socketio.emit("new_call", call_info, namespace="/teacher")
@@ -198,6 +281,14 @@ def webhook():
                     "endedReason": ended_reason,
                     "timestamp": time.time()
                 }, namespace="/teacher")
+
+                supabase.table("calls").update({
+                    "summary": summary,
+                    "recording_url": recording_url,
+                    "transcript": transcript,
+                    "duration_sec": active_calls[call_id]["duration"],
+                }).eq("id", call_id).execute()
+           
                 
                 print(f"📊 Call report sent for {student_name}")
                 
@@ -222,6 +313,13 @@ def webhook():
                     "endedReason": ended_reason,
                     "timestamp": time.time()
                 }, namespace="/teacher")
+
+                supabase.table("calls").update({
+                    "summary": summary,
+                    "recording_url": recording_url,
+                    "transcript": transcript,
+                    "duration_sec": active_calls[call_id]["duration"],
+                }).eq("id", call_id).execute()
                 
                 print(f"📊 Call report sent for {student_name} (recovered from call data)")
             
