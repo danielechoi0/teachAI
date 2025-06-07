@@ -37,11 +37,14 @@ def db_exec(query, *, context: str = ""):
     return res.data if hasattr(res, "data") else res.get("data", res)
 
 def save_assistant_to_db(vapi_id: str, cfg: dict):
-    return db_exec(
+    res = db_exec(
         supabase.table("assistants")
         .upsert({"vapi_id": vapi_id, "cfg": cfg}, on_conflict="vapi_id", returning="id,vapi_id"),
         context="upsert assistants",
-    )[0]
+    )
+    if not res or not isinstance(res, list) or not res[0]:
+        raise RuntimeError("Upsert returned no data for assistant")
+    return res[0]
 
 
 def create_assistant(cfg: dict) -> str:
