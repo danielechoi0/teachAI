@@ -36,15 +36,15 @@ def db_exec(query, *, context: str = ""):
 
 def save_assistant_to_db(vapi_id: str, cfg: dict):
     """Upsert assistant row keyed on Vapi's text ID (vapi_id)."""
-    return db_exec(
-        supabase.table("assistants")
-        .upsert(
+    try:
+        supabase.table("assistants").upsert(
             {"vapi_id": vapi_id, "cfg": cfg},
-            on_conflict="vapi_id",
-            returning="id,vapi_id",
-        ),
-        context="upsert assistants",
-    )[0]
+            on_conflict="vapi_id"
+        ).execute()
+        return {"vapi_id": vapi_id, "success": True}
+    except Exception as e:
+        app.logger.error(f"Error saving assistant to DB: {str(e)}")
+        raise RuntimeError(f"Failed to save assistant: {str(e)}")
 
 
 def create_assistant(cfg: dict) -> str:
@@ -125,6 +125,10 @@ def list_assistants():
             context="select assistants",
         )
 
+        # Ensure rows is a list
+        if not rows:
+            rows = []
+
         assistants = []
         for row in rows:
             cfg = row.get("cfg") or {}
@@ -160,18 +164,18 @@ def start_phone_call():
         }
         active_calls[call_id] = call_info
 
-        db_exec(
-            supabase.table("calls").insert(
-                {
-                    "id": call_id,
-                    "assistant_id": assistant_id,
-                    "student_name": student_name,
-                    "listen_url": listen_url,
-                    "started_at": "now()",
-                }
-            ),
-            context="insert calls",
-        )
+        # Insert call record without relying on return data
+        try:
+            supabase.table("calls").insert({
+                "id": call_id,
+                "assistant_id": assistant_id,
+                "student_name": student_name,
+                "listen_url": listen_url,
+                "started_at": "now()",
+            }).execute()
+        except Exception as db_error:
+            app.logger.warning(f"Failed to save call to database: {db_error}")
+            # Don't fail the entire request if database insert fails
 
         socketio.emit("new_call", call_info, namespace="/teacher")
         return jsonify({"success": True, "callId": call_id}), 201
@@ -216,19 +220,17 @@ def vapi_webhook():
                 namespace="/teacher",
             )
 
-            db_exec(
-                supabase.table("calls")
-                .update(
-                    {
-                        "recording_url": recording_url,
-                        "summary": summary,
-                        "transcript": transcript,
-                        "duration_sec": duration,
-                    }
-                )
-                .eq("id", call_id),
-                context="update calls",
-            )
+            # Update call record without relying on return data
+            try:
+                supabase.table("calls").update({
+                    "recording_url": recording_url,
+                    "summary": summary,
+                    "transcript": transcript,
+                    "duration_sec": duration,
+                }).eq("id", call_id).execute()
+            except Exception as db_error:
+                app.logger.warning(f"Failed to update call in database: {db_error}")
+
             active_calls.pop(call_id, None)
         return "", 200
     except Exception as exc:
