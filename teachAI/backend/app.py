@@ -25,6 +25,21 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
+def current_teacher(request) -> str:
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        token = auth_header.replace("Bearer ", "").strip()
+        if not token:
+            raise PermissionError("Missing bearer token")
+        
+        response = supabase.auth.get_user(token)
+        if not response.user:
+            raise PermissionError("Invalid token")
+        return response.user.id
+    except Exception as e:
+        app.logger.warning(f"Auth failed: {e}")
+        raise PermissionError("Authentication failed")
+
 def db_exec(query, *, context: str = ""):
     """Execute Supabase‑py v2 call, raise on error, return payload."""
     res = query.execute()
@@ -35,17 +50,6 @@ def db_exec(query, *, context: str = ""):
         app.logger.error(f"Supabase {context} error → {api_error}")
         raise RuntimeError(api_error)
     return res.data if hasattr(res, "data") else res.get("data", res)
-
-def save_assistant_to_db(vapi_id: str, cfg: dict):
-    res = db_exec(
-        supabase.table("assistants")
-        .upsert({"vapi_id": vapi_id, "cfg": cfg}, on_conflict="vapi_id", returning="id,vapi_id"),
-        context="upsert assistants",
-    )
-    if not res or not isinstance(res, list) or not res[0]:
-        raise RuntimeError("Upsert returned no data for assistant")
-    return res[0]
-
 
 def create_assistant(cfg: dict) -> str:
     r = requests.post(f"{API_URL}/assistant", headers={"Authorization": VAPI_KEY, "Content-Type": "application/json"}, json=cfg, timeout=15)
@@ -126,8 +130,6 @@ def upload_file():
         app.logger.exception("File upload error")
         return jsonify({"error": str(exc)}), 500
 
-
-
 @app.route("/create-assistant", methods=["POST", "OPTIONS"])
 def create_assistant_endpoint():
     if request.method == "OPTIONS":
@@ -137,12 +139,30 @@ def create_assistant_endpoint():
         response.headers.add('Access-Control-Allow-Methods', "POST,OPTIONS")
         return response
         
+
+    teacher_id = current_teacher(request) 
+
     try:
         cfg = request.get_json(silent=True) or {}
         if not cfg.get("model"):
             return jsonify({"error": "'model' is required in assistant config"}), 400
         vapi_id = create_assistant(cfg)
-        save_assistant_to_db(vapi_id, cfg)
+
+        system_prompt = cfg.get('model', {}).get('messages', [{}])[0].get('content')
+        first_message = cfg.get('firstMessage')
+        assistant_name = cfg.get('name')
+
+        db_exec(
+            supabase.table("assistants").insert({
+                "teacher_id": teacher_id,
+                "vapi_id": vapi_id,
+                "system_prompt": system_prompt,
+                "first_message": first_message,
+                "assistant_name": assistant_name
+
+            }),
+            context="insert assistant"
+        )
         
         response = jsonify({"success": True, "assistantId": vapi_id})
         response.headers.add("Access-Control-Allow-Origin", "*")
@@ -154,36 +174,52 @@ def create_assistant_endpoint():
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 500
 
-
-@app.route("/api/assistants", methods=["GET", "OPTIONS"])
-def list_assistants():
-    if request.method == "OPTIONS":
-        response = jsonify({})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization")
-        response.headers.add('Access-Control-Allow-Methods', "GET,OPTIONS")
-        return response
-        
+@app.route("/assistants/by-key/<student_key>", methods=["GET"])
+def assistants_for_student(student_key):
     try:
-        rows = db_exec(supabase.table("assistants").select("vapi_id,cfg").order("created_at", desc=True), context="select assistants")
-        out = []
-        for row in rows:
-            cfg = row.get("cfg") or {}
-            name = cfg.get("name") or cfg.get("firstMessage", "Assistant")
-            if len(name) > 30:
-                name = name[:27] + "…"
-            out.append({"id": row["vapi_id"], "name": name})
-        
-        response = jsonify(out)
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        return response, 200
-        
-    except Exception as exc:
-        app.logger.exception("Error listing assistants")
-        response = jsonify({"error": str(exc)})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        return response, 500
+        # Step 1: Look up teacher_id from the student key
+        teacher_row = (
+            supabase.table("teachers")
+            .select("id")
+            .eq("student_key", student_key)
+            .maybe_single()
+            .execute()
+        )
+        teacher_id = teacher_row.data["id"]
 
+        # Step 2: Get assistant names for that teacher
+        assistants = db_exec(
+            supabase.table("assistants")
+            .select("id, assistant_name")
+            .eq("teacher_id", teacher_id)
+            .order("created_at", desc=True),
+            context="assistants by student key"
+        )
+
+        return jsonify(assistants), 200
+
+    except Exception as exc:
+        app.logger.exception("Failed to fetch assistants for student")
+        return jsonify({"error": "Invalid student key or no assistants found"}), 404
+
+@app.route("/teacher/assistants", methods=["GET"])
+def list_teacher_assistants():
+    try:
+        teacher_id = current_teacher(request)
+
+        assistants = db_exec(
+            supabase.table("assistants")
+            .select("id, vapi_id, assistant_name, system_prompt, first_message")
+            .eq("teacher_id", teacher_id)
+            .order("created_at", desc=True),
+            context="teacher assistants"
+        )
+
+        return jsonify(assistants), 200
+
+    except Exception as exc:
+        app.logger.exception("Failed to fetch teacher assistants")
+        return jsonify({"error": str(exc)}), 500
 
 @app.route("/start-call", methods=["POST", "OPTIONS"])
 def start_phone_call():
@@ -196,13 +232,22 @@ def start_phone_call():
         
     try:
         body = request.get_json(silent=True) or {}
-        assistant_id = body.get("assistantId")
+        vapi_assistant_id = body.get("assistantId")  # This is the Vapi ID
         student_name = body.get("studentName")
         student_number = body.get("studentNumber")
-        if not all([assistant_id, student_name, student_number]):
+        if not all([vapi_assistant_id, student_name, student_number]):
             return jsonify({"error": "assistantId, studentName, studentNumber are required"}), 400
 
-        call_id = start_call(assistant_id, student_name, student_number)
+        assistant_row = db_exec(
+            supabase.table("assistants")
+            .select("id")
+            .eq("vapi_id", vapi_assistant_id)
+            .single(),
+            context="lookup assistant by vapi_id"
+        )
+        db_assistant_id = assistant_row["id"]  # This is the UUID we need
+
+        call_id = start_call(vapi_assistant_id, student_name, student_number)
         listen_url = poll_listen_url(call_id)
 
         call_info = {
@@ -210,22 +255,19 @@ def start_phone_call():
             "student": student_name,
             "listenUrl": listen_url,
             "startTime": time.time(),
-            "assistantId": assistant_id,
+            "assistantId": vapi_assistant_id,  # Keep Vapi ID for frontend
         }
         active_calls[call_id] = call_info
 
-        # Insert call record without relying on return data
+        # Insert call record with the correct database UUID
         try:
             supabase.table("calls").insert({
                 "id": call_id,
-                "assistant_id": assistant_id,
+                "assistant_id": db_assistant_id,
                 "student_name": student_name,
-                "listen_url": listen_url,
-                "started_at": "now()",
             }).execute()
         except Exception as db_error:
             app.logger.warning(f"Failed to save call to database: {db_error}")
-            # Don't fail the entire request if database insert fails
 
         socketio.emit("new_call", call_info, namespace="/teacher")
         
@@ -276,7 +318,7 @@ def vapi_webhook():
                 namespace="/teacher",
             )
 
-            # Update call record without relying on return data
+            # Update call record - this should work since call_id is the primary key
             try:
                 supabase.table("calls").update({
                     "recording_url": recording_url,
