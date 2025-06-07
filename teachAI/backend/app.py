@@ -26,12 +26,13 @@ supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 
 def db_exec(query, *, context: str = ""):
-    """Execute a Supabase query and log/raise on error."""
-    res = query.execute()
-    if res.error:
-        app.logger.error(f"Supabase {context} error → {res.error}")
-        raise RuntimeError(res.error)
-    return res.data
+    """Execute a Supabase query with proper error handling."""
+    try:
+        res = query.execute()
+        return res.data if hasattr(res, 'data') else res
+    except Exception as e:
+        app.logger.error(f"Supabase {context} error → {str(e)}")
+        raise RuntimeError(f"Database {context} failed: {str(e)}")
 
 def save_assistant_to_db(vapi_id: str, cfg: dict):
     """Upsert assistant row keyed on Vapi's text ID (vapi_id)."""
