@@ -12,7 +12,13 @@ from supabase import create_client
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, origins="*", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"], allow_headers=["Content-Type", "Authorization"])
+CORS(
+    app,
+    resources={r"/api/*": {"origins": "*"}},
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    supports_credentials=True  # Optional but often needed
+)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 
