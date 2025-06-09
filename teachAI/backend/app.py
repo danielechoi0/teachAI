@@ -406,12 +406,15 @@ def vapi_webhook():
             )
 
             try:
-                supabase.table("calls").update({
-                    "recording_url": recording_url,
-                    "summary": summary,
-                    "transcript": transcript,
-                    "duration_sec": duration,
-                }).eq("id", call_id).execute()
+                db_exec(
+                    supabase.table("calls").update({
+                        "recording_url": recording_url,
+                        "summary": summary,
+                        "transcript": transcript,
+                        "duration_sec": duration,
+                    }).eq("id", call_id),
+                    context="update call with end-of-call-report"
+                )
             except Exception as db_error:
                 app.logger.warning(f"Failed to update call in database: {db_error}")
 
