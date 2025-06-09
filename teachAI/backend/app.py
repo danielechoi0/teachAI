@@ -14,7 +14,7 @@ load_dotenv()
 app = Flask(__name__)
 CORS(
     app,
-    resources={r"/*": {"origins": "*"}},  # <- Apply to all routes
+    resources={r"/*": {"origins": "*"}},
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
     supports_credentials=True
@@ -125,7 +125,6 @@ def upload_file():
         if not file_id:
             return jsonify({"error": "Unexpected Vapi response"}), 502
 
-        # Return expected structure
         return jsonify({
             "provider": "google",
             "name": name,
@@ -150,7 +149,6 @@ def delete_assistant_endpoint(assistant_id):
     try:
         teacher_id = current_teacher(request)
         
-        # First, verify the assistant exists and belongs to this teacher
         assistant_row = db_exec(
             supabase.table("assistants")
             .select("id, vapi_id, teacher_id")
@@ -162,7 +160,6 @@ def delete_assistant_endpoint(assistant_id):
         
         vapi_id = assistant_row["vapi_id"]
         
-        # Delete from Vapi first
         try:
             r = requests.delete(
                 f"{API_URL}/assistant/{vapi_id}",
@@ -172,7 +169,6 @@ def delete_assistant_endpoint(assistant_id):
             r.raise_for_status()
         except requests.exceptions.RequestException as vapi_error:
             app.logger.warning(f"Failed to delete assistant from Vapi: {vapi_error}")
-            # Continue with database deletion even if Vapi deletion fails
         
         # Delete from database
         db_exec(
@@ -279,8 +275,15 @@ def assistants_for_student(student_key):
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 404
 
-@app.route("/teacher/assistants", methods=["GET"])
+@app.route("/teacher/assistants", methods=["GET", "OPTIONS"])
 def list_teacher_assistants():
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,OPTIONS")
+        return response
+
     try:
         teacher_id = current_teacher(request)
 
@@ -292,11 +295,15 @@ def list_teacher_assistants():
             context="teacher assistants"
         )
 
-        return jsonify(assistants), 200
+        response = jsonify(assistants)
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 200
 
     except Exception as exc:
         app.logger.exception("Failed to fetch teacher assistants")
-        return jsonify({"error": str(exc)}), 500
+        response = jsonify({"error": str(exc)})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 500
 
 @app.route("/start-call", methods=["POST", "OPTIONS"])
 def start_phone_call():
@@ -309,7 +316,7 @@ def start_phone_call():
         
     try:
         body = request.get_json(silent=True) or {}
-        vapi_assistant_id = body.get("assistantId")  # This is the Vapi ID
+        vapi_assistant_id = body.get("assistantId")
         student_name = body.get("studentName")
         student_number = body.get("studentNumber")
         if not all([vapi_assistant_id, student_name, student_number]):
@@ -322,7 +329,7 @@ def start_phone_call():
             .single(),
             context="lookup assistant by vapi_id"
         )
-        db_assistant_id = assistant_row["id"]  # This is the UUID we need
+        db_assistant_id = assistant_row["id"]
 
         call_id = start_call(vapi_assistant_id, student_name, student_number)
         listen_url = poll_listen_url(call_id)
@@ -332,11 +339,10 @@ def start_phone_call():
             "student": student_name,
             "listenUrl": listen_url,
             "startTime": time.time(),
-            "assistantId": vapi_assistant_id,  # Keep Vapi ID for frontend
+            "assistantId": vapi_assistant_id,
         }
         active_calls[call_id] = call_info
 
-        # Insert call record with the correct database UUID
         try:
             supabase.table("calls").insert({
                 "id": call_id,
@@ -394,7 +400,6 @@ def vapi_webhook():
                 namespace="/teacher",
             )
 
-            # Update call record - this should work since call_id is the primary key
             try:
                 supabase.table("calls").update({
                     "recording_url": recording_url,
@@ -409,7 +414,7 @@ def vapi_webhook():
         return "", 200
     except Exception as exc:
         app.logger.exception("Webhook error")
-        return "", 200  # keep Vapi happy even on failure
+        return "", 200
 
 @app.route("/active-calls", methods=["GET", "OPTIONS"])
 def get_active_calls():
