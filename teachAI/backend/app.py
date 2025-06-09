@@ -202,14 +202,19 @@ def create_assistant_endpoint():
         response.headers.add('Access-Control-Allow-Headers', "Content-Type,Authorization")
         response.headers.add('Access-Control-Allow-Methods', "POST,OPTIONS")
         return response
-        
 
-    teacher_id = current_teacher(request) 
+    teacher_id = current_teacher(request)
 
     try:
-        cfg = request.get_json(silent=True) or {}
+        payload = request.get_json(silent=True) or {}
+
+        # Separate config and description
+        cfg = payload.get("config", {})
+        description = payload.get("description", "")
+
         if not cfg.get("model"):
             return jsonify({"error": "'model' is required in assistant config"}), 400
+
         vapi_id = create_assistant(cfg)
 
         system_prompt = cfg.get('model', {}).get('messages', [{}])[0].get('content')
@@ -222,16 +227,16 @@ def create_assistant_endpoint():
                 "vapi_id": vapi_id,
                 "system_prompt": system_prompt,
                 "first_message": first_message,
-                "assistant_name": assistant_name
-
+                "assistant_name": assistant_name,
+                "description": description
             }),
             context="insert assistant"
         )
-        
+
         response = jsonify({"success": True, "assistantId": vapi_id})
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 201
-        
+
     except Exception as exc:
         app.logger.exception("Error creating assistant")
         response = jsonify({"error": str(exc)})
@@ -289,7 +294,7 @@ def list_teacher_assistants():
 
         assistants = db_exec(
             supabase.table("assistants")
-            .select("id, vapi_id, assistant_name, system_prompt, first_message")
+            .select("id, vapi_id, assistant_name, system_prompt, first_message, description")
             .eq("teacher_id", teacher_id)
             .order("created_at", desc=True),
             context="teacher assistants"
