@@ -180,10 +180,16 @@ def create_assistant_endpoint():
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 500
 
-@app.route("/assistants/by-key/<student_key>", methods=["GET"])
+@app.route("/assistants/by-key/<student_key>", methods=["GET", "OPTIONS"])
 def assistants_for_student(student_key):
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,OPTIONS")
+        return response
+
     try:
-        # Step 1: Look up teacher_id from the student key
         teacher_row = (
             supabase.table("teachers")
             .select("id")
@@ -193,7 +199,6 @@ def assistants_for_student(student_key):
         )
         teacher_id = teacher_row.data["id"]
 
-        # Step 2: Get assistant names for that teacher
         assistants = db_exec(
             supabase.table("assistants")
             .select("id, assistant_name")
@@ -202,11 +207,15 @@ def assistants_for_student(student_key):
             context="assistants by student key"
         )
 
-        return jsonify(assistants), 200
+        response = jsonify(assistants)
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 200
 
     except Exception as exc:
         app.logger.exception("Failed to fetch assistants for student")
-        return jsonify({"error": "Invalid student key or no assistants found"}), 404
+        response = jsonify({"error": "Invalid student key or no assistants found"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 404
 
 @app.route("/teacher/assistants", methods=["GET"])
 def list_teacher_assistants():
