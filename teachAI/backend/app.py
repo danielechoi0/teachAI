@@ -264,7 +264,7 @@ def assistants_for_student(student_key):
 
         assistants = db_exec(
             supabase.table("assistants")
-            .select("id, assistant_name")
+            .select("id, vapi_id, assistant_name")
             .eq("teacher_id", teacher_id)
             .order("created_at", desc=True),
             context="assistants by student key"
