@@ -94,6 +94,16 @@ def poll_listen_url(call_id: str, *, retries: int = 30, delay: int = 2) -> str:
         time.sleep(delay)
     raise RuntimeError("listenUrl not ready in time")
 
+def poll_control_url(call_id: str, *, retries: int = 30, delay: int = 2) -> str:
+    for _ in range(retries):
+        r = requests.get(f"{API_URL}/call/{call_id}", headers={"Authorization": VAPI_KEY}, timeout=10)
+        r.raise_for_status()
+        url = r.json().get("monitor", {}).get("controlUrl")
+        if url:
+            return url
+        time.sleep(delay)
+    raise RuntimeError("controlUrl not ready in time")
+
 active_calls: dict[str, dict] = {}
 
 @app.route("/upload-file", methods=["POST", "OPTIONS"])
@@ -362,20 +372,26 @@ def mark_call_viewed(id):
         return response
 
     try:
-        # Update the call as viewed
+        data = request.get_json()
+        if data is None or "viewed" not in data:
+            return jsonify({"error": "Missing 'viewed' value in request body"}), 400
+
+        viewed_status = bool(data["viewed"])
+
+        # Update the call with the new viewed status
         db_exec(
             supabase.table("calls")
-            .update({"viewed": True})
+            .update({"viewed": viewed_status})
             .eq("id", id),
-            context="mark call as viewed"
+            context="toggle call viewed status"
         )
 
-        response = jsonify({"success": True})
+        response = jsonify({"success": True, "viewed": viewed_status})
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 200
 
     except Exception as e:
-        app.logger.exception("Failed to mark call as viewed")
+        app.logger.exception("Failed to update call viewed status")
         response = jsonify({"error": str(e)})
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 500
@@ -408,11 +424,13 @@ def start_phone_call():
 
         call_id = start_call(vapi_assistant_id, student_name, student_number)
         listen_url = poll_listen_url(call_id)
+        control_url = poll_control_url(call_id)
 
         call_info = {
             "callId": call_id,
             "student": student_name,
             "listenUrl": listen_url,
+            "controlUrl": control_url,
             "startTime": time.time(),
             "assistantId": vapi_assistant_id,
         }
@@ -493,6 +511,46 @@ def vapi_webhook():
     except Exception as exc:
         app.logger.exception("Webhook error")
         return "", 200
+    
+@app.route("/send-control-message", methods=["POST", "OPTIONS"])
+def send_control_message():
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "POST,OPTIONS")
+        return response
+
+    try:
+        data = request.get_json()
+        control_url = data.get("controlUrl")
+        message = data.get("message")
+        end_call = data.get("endCallAfterSpoken", False)
+
+        if not control_url or not message:
+            return jsonify({"error": "controlUrl and message are required"}), 400
+
+        payload = {
+            "type": "say",
+            "content": message,
+            "endCallAfterSpoken": end_call
+        }
+
+        resp = requests.post(
+            control_url,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=10
+        )
+
+        if not resp.ok:
+            return jsonify({"error": "Failed to send control message", "details": resp.text}), 502
+
+        return jsonify({"success": True, "status": resp.status_code}), 200
+
+    except Exception as exc:
+        app.logger.exception("Failed to send control message")
+        return jsonify({"error": str(exc)}), 500
 
 @app.route("/active-calls", methods=["GET", "OPTIONS"])
 def get_active_calls():
