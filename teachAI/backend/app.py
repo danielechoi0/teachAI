@@ -14,11 +14,12 @@ load_dotenv()
 app = Flask(__name__)
 CORS(
     app,
-    resources={r"/api/*": {"origins": "*"}},
+    resources={r"/*": {"origins": "*"}},  # <- Apply to all routes
     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
-    supports_credentials=True  # Optional but often needed
+    supports_credentials=True
 )
+
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
 
@@ -135,7 +136,68 @@ def upload_file():
     except Exception as exc:
         app.logger.exception("File upload error")
         return jsonify({"error": str(exc)}), 500
+    
+@app.route("/delete-assistant/<assistant_id>", methods=["DELETE", "OPTIONS"])
+def delete_assistant_endpoint(assistant_id):
+    """Delete an assistant by ID. Only the teacher who created it can delete it."""
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "DELETE,OPTIONS")
+        return response
 
+    try:
+        teacher_id = current_teacher(request)
+        
+        # First, verify the assistant exists and belongs to this teacher
+        assistant_row = db_exec(
+            supabase.table("assistants")
+            .select("id, vapi_id, teacher_id")
+            .eq("id", assistant_id)
+            .eq("teacher_id", teacher_id)
+            .single(),
+            context="verify assistant ownership"
+        )
+        
+        vapi_id = assistant_row["vapi_id"]
+        
+        # Delete from Vapi first
+        try:
+            r = requests.delete(
+                f"{API_URL}/assistant/{vapi_id}",
+                headers={"Authorization": f"Bearer {VAPI_KEY}"},
+                timeout=15
+            )
+            r.raise_for_status()
+        except requests.exceptions.RequestException as vapi_error:
+            app.logger.warning(f"Failed to delete assistant from Vapi: {vapi_error}")
+            # Continue with database deletion even if Vapi deletion fails
+        
+        # Delete from database
+        db_exec(
+            supabase.table("assistants")
+            .delete()
+            .eq("id", assistant_id)
+            .eq("teacher_id", teacher_id),
+            context="delete assistant"
+        )
+        
+        response = jsonify({"success": True, "message": "Assistant deleted successfully"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 200
+        
+    except Exception as exc:
+        app.logger.exception("Error deleting assistant")
+        if "No rows found" in str(exc):
+            response = jsonify({"error": "Assistant not found or you don't have permission to delete it"})
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            return response, 404
+        else:
+            response = jsonify({"error": str(exc)})
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            return response, 500
+        
 @app.route("/create-assistant", methods=["POST", "OPTIONS"])
 def create_assistant_endpoint():
     if request.method == "OPTIONS":
@@ -296,7 +358,6 @@ def start_phone_call():
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 500
 
-
 @app.route("/vapi-webhook", methods=["POST"])
 def vapi_webhook():
     """Handle status updates and end‑of‑call reports from Vapi."""
@@ -350,7 +411,6 @@ def vapi_webhook():
         app.logger.exception("Webhook error")
         return "", 200  # keep Vapi happy even on failure
 
-
 @app.route("/active-calls", methods=["GET", "OPTIONS"])
 def get_active_calls():
     if request.method == "OPTIONS":
@@ -367,7 +427,6 @@ def get_active_calls():
 @socketio.on("connect", namespace="/teacher")
 def teacher_connect():
     emit("active_calls", list(active_calls.values()))
-
 
 @socketio.on("disconnect", namespace="/teacher")
 def teacher_disconnect():
