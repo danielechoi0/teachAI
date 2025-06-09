@@ -309,6 +309,48 @@ def list_teacher_assistants():
         response = jsonify({"error": str(exc)})
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 500
+    
+@app.route("/teacher-calls", methods=["GET", "OPTIONS"])
+def get_teacher_calls():
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,OPTIONS")
+        return response
+
+    try:
+        teacher_id = current_teacher(request)
+
+        # Get assistant IDs for this teacher
+        assistant_rows = db_exec(
+            supabase.table("assistants")
+            .select("id")
+            .eq("teacher_id", teacher_id),
+            context="get assistant ids for teacher"
+        )
+        assistant_ids = [a["id"] for a in assistant_rows]
+        if not assistant_ids:
+            return jsonify([]), 200
+
+        # Fetch calls with assistant names
+        call_rows = db_exec(
+            supabase.table("calls")
+            .select("id, student_name, recording_url, summary, transcript, duration_sec, started_at, assistant:assistant_id(assistant_name)")
+            .in_("assistant_id", assistant_ids)
+            .order("started_at", desc=True),
+            context="get teacher calls"
+        )
+
+        response = jsonify(call_rows)
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 200
+
+    except Exception as e:
+        app.logger.exception("Failed to fetch teacher calls")
+        response = jsonify({"error": str(e)})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 500
 
 @app.route("/start-call", methods=["POST", "OPTIONS"])
 def start_phone_call():
@@ -406,16 +448,15 @@ def vapi_webhook():
             )
 
             try:
-                response = db_exec(
+                db_exec(
                     supabase.table("calls").update({
                         "recording_url": recording_url,
                         "summary": summary,
                         "transcript": transcript,
-                        "duration_sec": duration,
+                        "duration_sec": int(duration),
                     }).eq("id", call_id),
                     context="update call with end-of-call-report"
                 )
-                app.logger.info(f"✅ Supabase update response: {response}")
             except Exception as db_error:
                 app.logger.warning(f"Failed to update call in database: {db_error}")
 
