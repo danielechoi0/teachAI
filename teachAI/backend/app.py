@@ -336,7 +336,7 @@ def get_teacher_calls():
         # Fetch calls with assistant names
         call_rows = db_exec(
             supabase.table("calls")
-            .select("id, student_name, recording_url, summary, transcript, duration_sec, started_at, assistant:assistant_id(assistant_name)")
+            .select("id, student_name, recording_url, summary, transcript, duration_sec, started_at, viewed, assistant:assistant_id(assistant_name)")
             .in_("assistant_id", assistant_ids)
             .order("started_at", desc=True),
             context="get teacher calls"
@@ -348,6 +348,34 @@ def get_teacher_calls():
 
     except Exception as e:
         app.logger.exception("Failed to fetch teacher calls")
+        response = jsonify({"error": str(e)})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 500
+
+@app.route("/mark-call-viewed/<id>", methods=["PATCH", "OPTIONS"])
+def mark_call_viewed(id):
+    if request.method == "OPTIONS":
+        response = jsonify({})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "PATCH,OPTIONS")
+        return response
+
+    try:
+        # Update the call as viewed
+        db_exec(
+            supabase.table("calls")
+            .update({"viewed": True})
+            .eq("id", id),
+            context="mark call as viewed"
+        )
+
+        response = jsonify({"success": True})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 200
+
+    except Exception as e:
+        app.logger.exception("Failed to mark call as viewed")
         response = jsonify({"error": str(e)})
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 500
