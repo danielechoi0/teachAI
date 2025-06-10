@@ -26,7 +26,6 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 VAPI_KEY = os.getenv("VAPI_API_KEY")
 API_URL = "https://api.vapi.ai"
 PHONE_ID = os.getenv("VAPI_PHONE_NUMBER_ID")
-
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 
@@ -467,11 +466,16 @@ def vapi_webhook():
         call = msg.get("call", {})
         call_id = call.get("id")
 
-        if mtype == "status-update" and msg.get("status") == "ended":
-            if call_id in active_calls:
+        if mtype == "status-update":
+            status = msg.get("status")
+            if status in {"ended", "failed", "busy", "no-answer"} and call_id in active_calls:
                 info = active_calls[call_id]
                 info["duration"] = time.time() - info["startTime"]
-                socketio.emit("call_ended", {**info, "endTime": time.time()}, namespace="/teacher")
+                socketio.emit("call_ended", {
+                    **info,
+                    "endTime": time.time(),
+                }, namespace="/teacher")
+                active_calls.pop(call_id, None)
 
         elif mtype == "end-of-call-report":
             recording_url = msg.get("recordingUrl")
