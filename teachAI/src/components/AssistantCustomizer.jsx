@@ -10,7 +10,6 @@ export default function AssistantCustomizer({ onBack, onSuccess, BACKEND_URL, sh
     language: "English",
     first_message: "",
     levels: "",
-    response_time: "30",
     conversation_type: "strict"
   });
 
@@ -278,28 +277,26 @@ export default function AssistantCustomizer({ onBack, onSuccess, BACKEND_URL, sh
 
   // Generate the appropriate prompt based on conversation type
   function generateSystemPrompt() {
-    const responseTime = assistant.response_time || "30";
     const language = assistant.language || "English";
     const level = assistant.levels || "intermediate";
     
     if (assistant.conversation_type === "strict") {
       return `[Identity]
 You are giving a speaking assessment in this language: ${language}. Given this teacher_prompt: ${assistant.teacher_prompt} you will follow these instructions exactly.
-The general structure of the call goes as so: You say the initial question that is given to you. Then give students ${responseTime} seconds amount of time to answer without interrupting.
+The general structure of the call goes as so: You say the initial question that is given to you.
 Then you ask the next given question exactly as given and so forth.
 
 [Response Guideline]
 -Given the questions you will ONLY ask these questions.
 - Do not say anything else besides the questions word for word in order in which they are given,
 - DO NOT answer if a student asks you a question
-- Give the student ${responseTime} seconds amount of time after each question you ask. DO NOT SPEAK DURING THIS TIME OR INTERRUPT even if they do not say anything or seem confused.
 
 [Task]
 - Ask the exact questions given in the exact order they are given in.`;
     } else {
       return `[Identity] 
 You are a language AI that will have a conversation with a student in a test style. Given this teacher_prompt: ${assistant.teacher_prompt} you will follow these instructions exactly.
-The general structure of the call goes as so: You say your initial question based off of what the teacher wants. Then give students ${responseTime} seconds amount of time to answer without interrupting.
+The general structure of the call goes as so: You say your initial question based off of what the teacher wants.
 Then you ask your next question/respond and so forth.
 
 [Response Guideline]
@@ -307,11 +304,10 @@ You will talk in this level of speaking proficiency: ${level}.
 If given knowledge base from teacher, if it is a list of vocab words, use those words in your responses/questions.
 If given questions to ask, you will ask them exactly as given.
 DO NOT HELP THE STUDENT IF THEY ASK FOR HELP. DO NOT STRAY AWAY FROM THE CONVERSATION TOPIC.
-Give exactly ${responseTime} seconds amount of time to respond DO NOT INTERRUPT WITHIN THIS TIME.
 Interrupt user if they go beyond the time they are given per response.
 
 [Task]
-Have a conversation with the student. Talk with ${level} proficiency in this ${language} language. Talk slowly and give students ${responseTime} seconds amount of time to respond.`;
+Have a conversation with the student. Talk with ${level} proficiency in this ${language} language.`;
     }
   }
 
@@ -329,8 +325,45 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
         return "en-US-AndrewMultilingualNeural";
     }
   }
+  function set_language() {
+    const language = assistant.language || "English";
+    switch (language) {
+      case "Spanish":
+        return "es-US";
+      case "Italian":
+        return "it-IT";
+      case "French":
+        return "fr-FR";
+      case "English":
+      default:
+        return "en-US";
+    }
+  }
+  function set_level() {
+    const level = assistant.level || "Intermediate";
+    switch (level) {
+      case "Beginner":
+        return 2.0;
+      case "Native":
+        return 0.4;
+      case "Advanced":
+        return 0.7;
+      case "Intermediate":
+      default:
+        return 1.0;
+    }
+  }
+
   
   async function handleSubmit() {
+    if (!assistant.teacher_prompt.trim()) {
+      showStatus("Please provide teaching instructions or questions", "error");
+      return;
+    }
+    if (!assistant.first_message.trim()) {
+      showStatus("Please provide a first message", "error");
+      return;
+    }
     if (!assistant.teacher_prompt.trim()) {
       showStatus("Please provide teaching instructions or questions", "error");
       return;
@@ -365,6 +398,29 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
           url: BACKEND_URL + "/vapi-webhook"
         },
         firstMessage: assistant.first_message,
+        firstMessageMode: "assistant-speaks-first",
+        backgroundSound: "off",
+        startSpeakingPlan: {
+          waitSeconds: set_level(),
+        },
+        analysisPlan: {
+          summaryPlan: {
+            "messages": [
+              {
+                "role": "system",
+                "content": `You are an expert note-taker and grader.
+                            You will be given a transcript of a call.
+                            Provide a tentative grade (A, B, C, D, F).
+                            Then summarize the call in maximum 5 sentences.
+                            DO NOT return anything except the letter grade and summary.`
+              },
+              {
+                "role": "user",
+                "content": "Here is the transcript:\n\n{{transcript}}\n\n"
+              }
+            ],
+          },
+        },
       };
 
       const kbConfig = {
@@ -391,10 +447,36 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
           provider: "azure",
           voiceId: set_voice()
         },
+        transcriber: {
+          provider: "azure",
+          language: set_language()
+        },
         server: {
           url: BACKEND_URL + "/vapi-webhook"
         },
         firstMessage: assistant.first_message,
+        backgroundSound: "off",
+        startSpeakingPlan: {
+          waitSeconds: set_level(),
+        },
+        analysisPlan: {
+          summaryPlan: {
+            "messages": [
+              {
+                "role": "system",
+                "content": `You are an expert note-taker and grader.
+                            You will be given a transcript of a call.
+                            Provide a tentative grade (A, B, C, D, F).
+                            Then summarize the call in maximum 5 sentences.
+                            DO NOT return anything except the letter grade and summary.`
+              },
+              {
+                "role": "user",
+                "content": "Here is the transcript:\n\n{{transcript}}\n\n"
+              }
+            ],
+          },
+        },
       };
       
       const assistantConfig = kb_array.length > 0 ? kbConfig : baseConfig;
@@ -428,10 +510,10 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
         setAssistant({
           name: "",
           teacher_prompt: "",
+          description: "",
           language: "English",
           first_message: "",
           levels: "",
-          response_time: "30",
           conversation_type: "strict"
         });
         setKbArray([]);
@@ -554,9 +636,6 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
                       {assistant.description && (
                         <p className="text-sm text-gray-600 mb-2">{assistant.description}</p>
                       )}
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <div>Language: {assistant.language || 'English'}</div>
-                      </div>
                     </div>
 
                     <div className="flex items-center space-x-2 ml-4">
@@ -618,26 +697,11 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
           </div>
 
           <Input 
-            label="First Message (Optional)" 
+            label="First Message" 
             value={assistant.first_message} 
             onChange={(e) => updateField("first_message", e.target.value)}
             placeholder="What the assistant says when the call starts"
           />
-          
-          {/* Response Time Input */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Response Time (seconds)</label>
-            <input
-              type="number"
-              min="5"
-              max="300"
-              value={assistant.response_time}
-              onChange={(e) => updateField("response_time", e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all duration-200"
-              placeholder="30"
-            />
-            <div className="text-xs text-gray-500 mt-1">How long students have to respond (5-300 seconds)</div>
-          </div>
 
           {/* Conversation Type Selection */}
           <div>

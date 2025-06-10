@@ -22,7 +22,6 @@ CORS(
 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
 
-
 VAPI_KEY = os.getenv("VAPI_API_KEY")
 API_URL = "https://api.vapi.ai"
 PHONE_ID = os.getenv("VAPI_PHONE_NUMBER_ID")
@@ -481,7 +480,7 @@ def vapi_webhook():
             recording_url = msg.get("recordingUrl")
             summary = msg.get("summary")
             transcript = msg.get("transcript")
-            duration = active_calls.get(call_id, {}).get("duration")
+            raw_duration = active_calls.get(call_id, {}).get("duration")
 
             socketio.emit(
                 "call_report",
@@ -498,12 +497,13 @@ def vapi_webhook():
             )
 
             try:
+                duration = int(raw_duration) if raw_duration is not None else 0
                 db_exec(
                     supabase.table("calls").update({
                         "recording_url": recording_url,
                         "summary": summary,
                         "transcript": transcript,
-                        "duration_sec": int(duration),
+                        "duration_sec": duration,
                     }).eq("id", call_id),
                     context="update call with end-of-call-report"
                 )
