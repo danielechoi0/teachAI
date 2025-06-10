@@ -3,7 +3,7 @@ import eventlet
 eventlet.monkey_patch()
 
 from flask import Flask, request, jsonify
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room
 from dotenv import load_dotenv
 import os, requests, time, traceback, mimetypes
 from flask_cors import CORS
@@ -576,6 +576,35 @@ def teacher_connect():
 @socketio.on("disconnect", namespace="/teacher")
 def teacher_disconnect():
     pass
+
+@socketio.on("live_message")
+def handle_live_message(data, ack=None):
+    try:
+        call_id = data.get("callId")
+        message = data.get("message")
+
+        if not call_id or not message:
+            if ack:
+                ack({"error": "Missing callId or message"})
+            return
+
+        # Emit to the call room (students should have joined this room)
+        socketio.emit("live_message", {"callId": call_id, "message": message}, room=call_id)
+
+        # Acknowledge success
+        if ack:
+            ack({"success": True})
+    except Exception as e:
+        app.logger.exception("Error in live_message handler")
+        if ack:
+            ack({"error": str(e)})
+
+@socketio.on("join_call")
+def handle_join_call(data):
+    call_id = data.get("callId")
+    if call_id:
+        join_room(call_id)
+        app.logger.info(f"Client joined call room: {call_id}")
 
 if __name__ == "__main__":
     app.logger.info("🚀 Language Learning Hub backend starting…")
