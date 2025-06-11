@@ -654,107 +654,115 @@ const CallHistoryPage = ({ user, showStatus, BACKEND_URL }) => {
 
       {/* Transcript Modal */}
       {selectedCall && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-zinc-700">
-              <div className="flex items-center justify-between">
-                <div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50">
+          <div
+            className="absolute left-1/2 max-w-6xl w-full px-4"
+            style={{
+              top: `${window.scrollY + window.innerHeight / 2}px`,
+              transform: 'translateX(-50%) translateY(-50%)'
+            }}
+          >
+            <div className="bg-zinc-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              <div className="p-6 border-b border-zinc-700">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-xl font-semibold text-zinc-200">Call Transcript</h3>
+                      {!selectedCall.viewed && (
+                        <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">
+                          New
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-zinc-500">{selectedCall.userName} • {selectedCall.assistantName} • {formatDate(selectedCall.startTime)}</p>
+                  </div>
                   <div className="flex items-center gap-3">
-                    <h3 className="text-xl font-semibold text-zinc-200">Call Transcript</h3>
-                    {!selectedCall.viewed && (
-                      <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-medium">
-                        New
-                      </span>
+                    <button
+                      onClick={() => markCallViewed(selectedCall.id, !selectedCall.viewed)}
+                      disabled={updatingViewed.has(selectedCall.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                        selectedCall.viewed 
+                          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
+                          : 'bg-zinc-700 text-zinc-500 hover:bg-zinc-600'
+                      } ${updatingViewed.has(selectedCall.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      title={selectedCall.viewed ? 'Mark as unviewed' : 'Mark as viewed'}
+                    >
+                      {updatingViewed.has(selectedCall.id) ? (
+                        <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : selectedCall.viewed ? (
+                        <CheckCircle className="w-4 h-4" />
+                      ) : (
+                        <Circle className="w-4 h-4" />
+                      )}
+                      <span className="text-sm">{selectedCall.viewed ? 'Viewed' : 'Mark as Viewed'}</span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedCall(null)}
+                      className="text-zinc-400 hover:text-zinc-200 text-2xl"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 overflow-y-auto max-h-[60vh]">
+                <div className="bg-zinc-700 rounded-lg p-4 mb-4">
+                  <h4 className="font-semibold text-zinc-200 mb-2">Summary</h4>
+                  <p className="text-zinc-500">{selectedCall.summary}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-zinc-200 mb-3">Full Transcript</h4>
+                  <div className="space-y-3">
+                    {selectedCall.transcript && selectedCall.transcript !== 'No transcript available' ? (
+                      selectedCall.transcript.split('\n').filter(line => line.trim()).map((line, index) => (
+                        <div key={index} className="flex gap-3">
+                          <div className={`px-3 py-2 rounded-lg max-w-[80%] ${
+                            line.toLowerCase().includes('student') || line.toLowerCase().includes('user')
+                              ? 'bg-zinc-600 text-zinc-200 ml-auto' 
+                              : 'bg-zinc-700 text-zinc-500'
+                          }`}>
+                            <p className="text-sm font-medium mb-1">
+                              {line.toLowerCase().includes('student') || line.toLowerCase().includes('user') ? 'Student' : 'Assistant'}
+                            </p>
+                            <p>{line.replace(/^(Student:|Assistant:|User:)\s*/i, '')}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-zinc-500">
+                        <FileText className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
+                        <p>No transcript available for this call</p>
+                      </div>
                     )}
                   </div>
-                  <p className="text-zinc-500">{selectedCall.userName} • {selectedCall.assistantName} • {formatDate(selectedCall.startTime)}</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => markCallViewed(selectedCall.id, !selectedCall.viewed)}
-                    disabled={updatingViewed.has(selectedCall.id)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                      selectedCall.viewed 
-                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
-                        : 'bg-zinc-700 text-zinc-500 hover:bg-zinc-600'
-                    } ${updatingViewed.has(selectedCall.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    title={selectedCall.viewed ? 'Mark as unviewed' : 'Mark as viewed'}
-                  >
-                    {updatingViewed.has(selectedCall.id) ? (
-                      <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    ) : selectedCall.viewed ? (
-                      <CheckCircle className="w-4 h-4" />
-                    ) : (
-                      <Circle className="w-4 h-4" />
+              </div>
+              <div className="p-6 border-t border-zinc-700 bg-zinc-700">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-zinc-500">
+                    Duration: {formatDuration(selectedCall.duration)}
+                  </div>
+                  <div className="flex gap-3">
+                    {selectedCall.recordingUrl && (
+                      <>
+                        <button
+                          onClick={() => window.open(selectedCall.recordingUrl, '_blank')}
+                          className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
+                        >
+                          <Play className="w-4 h-4" />
+                          Play Recording
+                        </button>
+                        <a
+                          href={selectedCall.recordingUrl}
+                          download
+                          className="flex items-center gap-2 px-4 py-2 bg-zinc-600 text-zinc-200 rounded-lg hover:bg-zinc-500 transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download
+                        </a>
+                      </>
                     )}
-                    <span className="text-sm">{selectedCall.viewed ? 'Viewed' : 'Mark as Viewed'}</span>
-                  </button>
-                  <button
-                    onClick={() => setSelectedCall(null)}
-                    className="text-zinc-400 hover:text-zinc-200 text-2xl"
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              <div className="bg-zinc-700 rounded-lg p-4 mb-4">
-                <h4 className="font-semibold text-zinc-200 mb-2">Summary</h4>
-                <p className="text-zinc-500">{selectedCall.summary}</p>
-              </div>
-              <div>
-                <h4 className="font-semibold text-zinc-200 mb-3">Full Transcript</h4>
-                <div className="space-y-3">
-                  {selectedCall.transcript && selectedCall.transcript !== 'No transcript available' ? (
-                    selectedCall.transcript.split('\n').filter(line => line.trim()).map((line, index) => (
-                      <div key={index} className="flex gap-3">
-                        <div className={`px-3 py-2 rounded-lg max-w-[80%] ${
-                          line.toLowerCase().includes('student') || line.toLowerCase().includes('user')
-                            ? 'bg-zinc-600 text-zinc-200 ml-auto' 
-                            : 'bg-zinc-700 text-zinc-500'
-                        }`}>
-                          <p className="text-sm font-medium mb-1">
-                            {line.toLowerCase().includes('student') || line.toLowerCase().includes('user') ? 'Student' : 'Assistant'}
-                          </p>
-                          <p>{line.replace(/^(Student:|Assistant:|User:)\s*/i, '')}</p>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-zinc-500">
-                      <FileText className="w-12 h-12 mx-auto mb-3 text-zinc-300" />
-                      <p>No transcript available for this call</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="p-6 border-t border-zinc-700 bg-zinc-700">
-              <div className="flex justify-between items-center">
-                <div className="text-sm text-zinc-500">
-                  Duration: {formatDuration(selectedCall.duration)}
-                </div>
-                <div className="flex gap-3">
-                  {selectedCall.recordingUrl && (
-                    <>
-                      <button
-                        onClick={() => window.open(selectedCall.recordingUrl, '_blank')}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
-                      >
-                        <Play className="w-4 h-4" />
-                        Play Recording
-                      </button>
-                      <a
-                        href={selectedCall.recordingUrl}
-                        download
-                        className="flex items-center gap-2 px-4 py-2 bg-zinc-600 text-zinc-200 rounded-lg hover:bg-zinc-500 transition-colors"
-                      >
-                        <Download className="w-4 h-4" />
-                        Download
-                      </a>
-                    </>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
