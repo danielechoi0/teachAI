@@ -9,6 +9,7 @@ let ws = null;
 let gainNode = null;
 let analyserNode = null;
 let levelCheckInterval = null;
+let audioNode = null;
 
 export default function EnhancedListenCard({ callId = "demo-call", student = "Demo Student", listenUrl = "", controlUrl = "", startTime = Date.now() / 1000 }) {
   const [isListening, setIsListening] = useState(false);
@@ -72,7 +73,10 @@ export default function EnhancedListenCard({ callId = "demo-call", student = "De
         setStatus(s);
         setIsListening(s === "connected");
       },
-    }).catch(() => setStatus("error"));
+    }).catch((error) => {
+      console.error("Error starting audio:", error);
+      setStatus("error");
+    });
   };
 
   const stop = () => {
@@ -337,21 +341,40 @@ export default function EnhancedListenCard({ callId = "demo-call", student = "De
 async function startAudio(listenUrl, options = {}) {
   if (ws) return;
   const { volume = 1, onLevel, onStatus } = options;
+  
   try {
     onStatus?.("connecting");
+    
+    // Create audio context
     audioContext = new AudioContext({ sampleRate: rate });
+    
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+      console.log("Audio context resumed");
+    }
+    
+    // Add audio worklet module
     await audioContext.audioWorklet.addModule('/audioProcessor.js');
-    const audioNode = new AudioWorkletNode(audioContext, 'audio-processor', { outputChannelCount: [2] });
+    
+    // Create audio worklet node
+    audioNode = new AudioWorkletNode(audioContext, 'audio-processor', { 
+      outputChannelCount: [2] 
+    });
     
     gainNode = audioContext.createGain();
     gainNode.gain.value = volume;
+    
     analyserNode = audioContext.createAnalyser();
     analyserNode.fftSize = 256;
     const dataArray = new Uint8Array(analyserNode.frequencyBinCount);
     
+    audioNode.connect(gainNode);
     gainNode.connect(analyserNode);
     analyserNode.connect(audioContext.destination);
     
+    console.log("Audio nodes connected successfully");
+    
+    // Set up audio level monitoring
     if (onLevel) {
       levelCheckInterval = setInterval(() => {
         analyserNode.getByteFrequencyData(dataArray);
@@ -362,29 +385,77 @@ async function startAudio(listenUrl, options = {}) {
 
     ws = new WebSocket(listenUrl);
     ws.binaryType = 'arraybuffer';
-    ws.onopen = () => onStatus?.("connected");
+    
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+      onStatus?.("connected");
+    };
+    
     ws.onmessage = (event) => {
-      if (event.data instanceof ArrayBuffer) {
-        const int16Array = new Int16Array(event.data);
-        const float32Array = Float32Array.from(int16Array, i => i / 32768.0);
-        audioNode.port.postMessage({ audioData: float32Array });
+      if (event.data instanceof ArrayBuffer && audioNode) {
+        try {
+          const int16Array = new Int16Array(event.data);
+          const float32Array = Float32Array.from(int16Array, i => i / 32768.0);
+          audioNode.port.postMessage({ audioData: float32Array });
+        } catch (error) {
+          console.error("Error processing audio data:", error);
+        }
       }
     };
-    ws.onclose = () => { onStatus?.("disconnected"); stopAudio(); };
-    ws.onerror = (error) => { console.error("WebSocket error:", error); onStatus?.("error"); stopAudio(); };
+    
+    ws.onclose = (event) => {
+      console.log("WebSocket closed:", event.code, event.reason);
+      onStatus?.("disconnected");
+      stopAudio();
+    };
+    
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      onStatus?.("error");
+      stopAudio();
+    };
+    
   } catch (error) {
     console.error("Error starting audio:", error);
     onStatus?.("error");
-    stopAudio();
+    await stopAudio();
+    throw error;
   }
 }
 
 async function stopAudio() {
-  if (levelCheckInterval) clearInterval(levelCheckInterval);
-  if (audioContext) await audioContext.close();
-  if (ws) ws.close();
-  audioContext = null;
-  gainNode = null;
-  analyserNode = null;
-  ws = null;
+  console.log("Stopping audio...");
+  
+  if (levelCheckInterval) {
+    clearInterval(levelCheckInterval);
+    levelCheckInterval = null;
+  }
+  
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+  
+  try {
+    if (audioNode) {
+      audioNode.disconnect();
+      audioNode = null;
+    }
+    if (gainNode) {
+      gainNode.disconnect();
+      gainNode = null;
+    }
+    if (analyserNode) {
+      analyserNode.disconnect();
+      analyserNode = null;
+    }
+    if (audioContext) {
+      await audioContext.close();
+      audioContext = null;
+    }
+  } catch (error) {
+    console.error("Error cleaning up audio:", error);
+  }
+  
+  console.log("Audio stopped and cleaned up");
 }
