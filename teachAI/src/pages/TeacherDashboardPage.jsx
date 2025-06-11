@@ -31,49 +31,93 @@ function AuthComponent({ onAuthSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleAuth = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+const handleAuth = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    try {
-      if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        onAuthSuccess(data.user);
-        showStatus("Signed in!", "success");
-      } else {
-        const { error: signupError } = await supabase.auth.signUp({ email, password });
-        if (signupError) throw signupError;
+  try {
+    if (isLogin) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      onAuthSuccess(data.user, false); // false indicates login, not signup
+      showStatus("Signed in!", "success");
+    } else {
+      const { data: signupData, error: signupError } = await supabase.auth.signUp({ 
+        email, 
+        password 
+      });
+      if (signupError) throw signupError;
 
-        let sessionUser = null;
-        for (let i = 0; i < 10; i++) {
-          const { data } = await supabase.auth.getSession();
-          if (data?.session?.user) {
-            sessionUser = data.session.user;
-            break;
-          }
-          await new Promise(res => setTimeout(res, 200));
+      let sessionUser = null;
+      let attempts = 0;
+      const maxAttempts = 15;
+      
+      while (attempts < maxAttempts) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.user) {
+          sessionUser = sessionData.session.user;
+          break;
         }
-
-        if (!sessionUser) throw new Error("Session not established. Try logging in.");
-
-        const { error: profileError } = await supabase
-          .from("teachers")
-          .insert({ id: sessionUser.id, display_name: displayName || email });
-
-        if (profileError) throw profileError;
-
-        onAuthSuccess(sessionUser);
-        showStatus("Account created!", "success");
+        await new Promise(res => setTimeout(res, 300));
+        attempts++;
       }
-    } catch (err) {
-      setError(err.message);
-      showStatus(`${err.message}`, "error");
-    } finally {
-      setLoading(false);
+
+      if (!sessionUser) {
+        throw new Error("Session not established. Please try logging in manually.");
+      }
+
+      let profileCreated = false;
+      let profileAttempts = 0;
+      const maxProfileAttempts = 3;
+
+      while (!profileCreated && profileAttempts < maxProfileAttempts) {
+        try {
+          const { error: profileError } = await supabase
+            .from("teachers")
+            .insert({ 
+              id: sessionUser.id, 
+              display_name: displayName || email.split('@')[0]
+            });
+
+          if (profileError) {
+            if (profileError.code === '23505') {
+              console.log("Profile already exists, continuing...");
+              profileCreated = true;
+            } else {
+              throw profileError;
+            }
+          } else {
+            profileCreated = true;
+          }
+        } catch (retryError) {
+          profileAttempts++;
+          if (profileAttempts >= maxProfileAttempts) {
+            throw new Error(`Failed to create profile: ${retryError.message}`);
+          }
+          await new Promise(res => setTimeout(res, 500));
+        }
+      }
+
+      onAuthSuccess(sessionUser, true); // true indicates signup
+      showStatus("Account created successfully!", "success");
     }
-  };
+  } catch (err) {
+    console.error("Auth error:", err);
+    setError(err.message);
+    showStatus(`${err.message}`, "error");
+
+    if (!isLogin) {
+      try {
+        await supabase.auth.signOut();
+      } catch (signOutError) {
+        console.error("Error signing out after failed signup:", signOutError);
+      }
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-950 to-black flex items-center justify-center p-6 relative overflow-hidden">
@@ -149,6 +193,7 @@ export default function TeacherDashboardPage() {
   const [endedCalls, setEndedCalls] = useState([]);
   const [callReports, setCallReports] = useState({});
   const [selectedReport, setSelectedReport] = useState(null);
+  const [isNewSignup, setIsNewSignup] = useState(false);
 
   const fetchTeacherProfile = useCallback(async (id) => {
     try {
@@ -163,6 +208,12 @@ export default function TeacherDashboardPage() {
       if (data) {
         console.log("Teacher profile loaded:", data.display_name);
         setTeacher(data);
+        
+        // If this was a new signup, automatically redirect to dashboard
+        if (isNewSignup) {
+          setActiveTab("dashboard");
+          setIsNewSignup(false);
+        }
       } else {
         console.log("No teacher profile found for user");
         showStatus("Teacher profile not found. Please contact support.", "error");
@@ -171,7 +222,14 @@ export default function TeacherDashboardPage() {
       console.error("fetchTeacherProfile error:", err.message);
       showStatus(`${err.message}`, "error");
     }
-  }, [showStatus]);
+  }, [showStatus, isNewSignup]);
+
+  const handleAuthSuccess = useCallback((authenticatedUser, isSignup = false) => {
+    setUser(authenticatedUser);
+    if (isSignup) {
+      setIsNewSignup(true);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -278,7 +336,7 @@ export default function TeacherDashboardPage() {
     );
   }
 
-  if (!user || !teacher) return <AuthComponent onAuthSuccess={setUser} />;
+  if (!user || !teacher) return <AuthComponent onAuthSuccess={handleAuthSuccess} />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-950 to-black flex relative overflow-hidden">

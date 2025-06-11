@@ -117,7 +117,7 @@ export default function StudentSetupPage() {
                   className="w-full px-4 py-3 pl-12 bg-zinc-800/50 border-2 border-zinc-700 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-white placeholder-zinc-400 backdrop-blur-sm"
                   value={teacherKey}
                   onChange={(e) => setTeacherKey(e.target.value)}
-                  placeholder="Enter the key provided by your teacher"
+                  placeholder="Enter key"
                   maxLength={50}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -128,9 +128,6 @@ export default function StudentSetupPage() {
                 />
                 <Key className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-zinc-400" />
               </div>
-              <p className="text-xs text-zinc-500">
-                Ask your teacher for the unique class key
-              </p>
             </div>
             
             {error && (
