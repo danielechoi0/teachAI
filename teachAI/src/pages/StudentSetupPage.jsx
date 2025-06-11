@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { User, ChevronDown, RefreshCw, Key } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fetchAssistants } from "../api/vapi";
+
 export default function StudentSetupPage() {
   const [teacherKey, setTeacherKey] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -88,14 +89,20 @@ export default function StudentSetupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-md border border-emerald-100">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-950 to-black flex items-center justify-center p-4 relative overflow-hidden font-poppins">
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-r from-emerald-800/30 to-teal-800/30 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute bottom-32 right-16 w-40 h-40 bg-gradient-to-r from-blue-800/30 to-indigo-800/30 rounded-full blur-xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-gradient-to-r from-purple-800/20 to-pink-800/20 rounded-full blur-lg animate-pulse delay-500"></div>
+      </div>
+
+      <div className="relative z-10 bg-zinc-900/95 backdrop-blur-xl rounded-2xl shadow-2xl p-10 w-full max-w-md border border-zinc-800">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl transform hover:scale-105 transition-all duration-300">
             <User className="w-8 h-8 text-white" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome, Student!</h2>
-          <p className="text-gray-600">
+          <h2 className="text-2xl font-medium text-white mb-2">Welcome, Student!</h2>
+          <p className="text-zinc-400 font-normal">
             {!keyVerified ? "Enter your teacher's key to continue" : "Let's set up your profile"}
           </p>
         </div>
@@ -103,11 +110,11 @@ export default function StudentSetupPage() {
         {!keyVerified ? (
           <div className="space-y-6">
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">Teacher Key *</label>
+              <label className="block text-sm font-medium text-zinc-300">Teacher Key *</label>
               <div className="relative">
                 <input
                   type="text"
-                  className="w-full px-4 py-3 pl-12 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors"
+                  className="w-full px-4 py-3 pl-12 bg-zinc-800/50 border-2 border-zinc-700 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-white placeholder-zinc-400 backdrop-blur-sm"
                   value={teacherKey}
                   onChange={(e) => setTeacherKey(e.target.value)}
                   placeholder="Enter the key provided by your teacher"
@@ -119,23 +126,23 @@ export default function StudentSetupPage() {
                     }
                   }}
                 />
-                <Key className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Key className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-zinc-400" />
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-zinc-500">
                 Ask your teacher for the unique class key
               </p>
             </div>
             
             {error && (
-              <div className="w-full px-4 py-3 border-2 border-red-200 rounded-xl bg-red-50">
-                <p className="text-red-600 text-sm">{error}</p>
+              <div className="w-full px-4 py-3 border-2 border-red-500/50 rounded-xl bg-red-900/30 backdrop-blur-sm">
+                <p className="text-red-400 text-sm">{error}</p>
               </div>
             )}
             
             <button
               onClick={verifyKey}
               disabled={!teacherKey.trim() || loading}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-4 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-medium py-4 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-emerald-700 hover:to-teal-800 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -152,26 +159,26 @@ export default function StudentSetupPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+            <div className="flex justify-between items-center p-3 bg-emerald-900/30 rounded-xl border border-emerald-700/50 backdrop-blur-sm">
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
                   <div className="w-2 h-2 bg-white rounded-full"></div>
                 </div>
-                <span className="text-sm font-medium text-emerald-700">Key Verified</span>
+                <span className="text-sm font-medium text-emerald-400">Key Verified</span>
               </div>
               <button
                 onClick={handleRetryKey}
-                className="text-sm text-emerald-600 hover:text-emerald-700 underline"
+                className="text-sm text-emerald-400 hover:text-emerald-300 underline transition-colors"
               >
                 Change Key
               </button>
             </div>
             
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">Your Name *</label>
+              <label className="block text-sm font-medium text-zinc-300">Your Name *</label>
               <input
                 type="text"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors"
+                className="w-full px-4 py-3 bg-zinc-800/50 border-2 border-zinc-700 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-white placeholder-zinc-400 backdrop-blur-sm"
                 value={studentName}
                 onChange={e => setStudentName(e.target.value)}
                 placeholder="Enter your name"
@@ -180,21 +187,21 @@ export default function StudentSetupPage() {
             </div>
             
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">Phone Number *</label>
+              <label className="block text-sm font-medium text-zinc-300">Phone Number *</label>
               <input
                 type="tel"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors"
+                className="w-full px-4 py-3 bg-zinc-800/50 border-2 border-zinc-700 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors text-white placeholder-zinc-400 backdrop-blur-sm"
                 value={studentNumber}
                 onChange={handlePhoneChange}
                 placeholder="+1 (555) 123-4567"
               />
-              <p className="text-xs text-gray-500">Include country code (e.g., +1 for US)</p>
+              <p className="text-xs text-zinc-500">Include country code (e.g., +1 for US)</p>
             </div>
             
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">Choose Assistant *</label>
+              <label className="block text-sm font-medium text-zinc-300">Choose Assistant *</label>
               {assistants.length === 0 ? (
-                <div className="w-full px-4 py-3 border-2 border-yellow-200 rounded-xl bg-yellow-50 text-yellow-700 text-sm">
+                <div className="w-full px-4 py-3 border-2 border-yellow-500/50 rounded-xl bg-yellow-900/30 text-yellow-400 text-sm backdrop-blur-sm">
                   No assistants available. Please contact your teacher.
                 </div>
               ) : (
@@ -202,16 +209,16 @@ export default function StudentSetupPage() {
                   <select
                     value={selectedAssistant}
                     onChange={e => setSelectedAssistant(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors appearance-none bg-white cursor-pointer"
+                    className="w-full px-4 py-3 bg-zinc-800/50 border-2 border-zinc-700 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors appearance-none cursor-pointer text-white backdrop-blur-sm"
                   >
-                    <option value="">Select an assistant...</option>
+                    <option value="" className="bg-zinc-800 text-zinc-400">Select an assistant...</option>
                     {assistants.map(assistant => (
-                      <option key={assistant.id} value={assistant.vapi_id}>
+                      <option key={assistant.id} value={assistant.vapi_id} className="bg-zinc-800 text-white">
                         {assistant.assistant_name}
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-zinc-400 pointer-events-none" />
                 </div>
               )}
             </div>
@@ -219,12 +226,12 @@ export default function StudentSetupPage() {
             <button
               disabled={!studentName.trim() || !selectedAssistant}
               onClick={handleContinue}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-4 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-medium py-4 px-6 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:from-emerald-700 hover:to-teal-800 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
             >
               Continue to Dashboard
             </button>
             
-            <p className="text-xs text-gray-500 text-center">
+            <p className="text-xs text-zinc-500 text-center">
               * Required fields
             </p>
           </div>

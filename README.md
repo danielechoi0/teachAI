@@ -1,8 +1,8 @@
-# TailorTalks
+# Edusona
 
-**TailorTalks** is a personalized language learning platform powered by [Vapi](https://www.vapi.ai). With TailorTalks, teachers can design and deploy fully customized voice AI assistants, monitor student progress in real time, and evaluate conversations with automated insights.
+**Edusona** is a personalized language learning platform powered by [Vapi](https://www.vapi.ai). With Edusona, teachers can design and deploy fully customized voice AI assistants, monitor student progress in real time, and evaluate conversations with automated insights.
 
-**TailorTalks** offers the opportunity to truly offer personalized learning for everyone.
+**Edusona** offers the opportunity to truly offer personalized learning for everyone.
 
 ---
 
@@ -21,8 +21,8 @@
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/TailorTalks.git
-cd TailorTalks
+git clone https://github.com/your-username/Edusona.git
+cd Edusona
 ```
 
 ### 2. Install Dependencies

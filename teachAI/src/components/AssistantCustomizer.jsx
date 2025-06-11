@@ -468,7 +468,8 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
                             You will be given a transcript of a call.
                             Provide a tentative grade (A, B, C, D, F).
                             Then summarize the call in maximum 5 sentences.
-                            DO NOT return anything except the letter grade and summary.`
+                            DO NOT return anything except the letter grade and summary.
+                            Structure response so it goes Grade: and then Summary: `
               },
               {
                 "role": "user",
@@ -539,13 +540,13 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
   function DeleteConfirmModal({ assistant, onConfirm, onCancel, isDeleting }) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="bg-zinc-900 rounded-lg p-6 max-w-md w-full mx-4">
           <div className="flex items-center space-x-3 mb-4">
             <AlertTriangle className="w-6 h-6 text-red-500" />
-            <h3 className="text-lg font-semibold text-gray-900">Delete Assistant</h3>
+            <h3 className="text-lg font-semibold text-zinc-400">Delete Assistant</h3>
           </div>
           
-          <p className="text-gray-600 mb-6">
+          <p className="text-zinc-400 mb-6">
             Are you sure you want to delete <strong>"{assistant.assistant_name}"</strong>? This action cannot be undone.
           </p>
           
@@ -560,7 +561,7 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
             <button
               onClick={onCancel}
               disabled={isDeleting}
-              className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200"
+              className="flex-1 bg-zinc-700 text-zinc-400 px-4 py-2 rounded-lg hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200"
             >
               Cancel
             </button>
@@ -571,16 +572,16 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
   }
 
   return (
-    <div className="h-full overflow-y-auto p-6 space-y-4">
+    <div className="h-full overflow-y-auto p-6 space-y-4 bg-zinc-900">
       {/* View Mode Toggle */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex bg-gray-100 rounded-lg p-1">
+        <div className="flex bg-zinc-800 rounded-lg p-1">
           <button
             onClick={() => setViewMode('create')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
               viewMode === 'create'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-zinc-700 text-zinc-200 shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Plus className="w-4 h-4 inline mr-2" />
@@ -590,8 +591,8 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
             onClick={() => setViewMode('manage')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
               viewMode === 'manage'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-zinc-700 text-zinc-200 shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Edit className="w-4 h-4 inline mr-2" />
@@ -604,21 +605,21 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
       {viewMode === 'manage' && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Edit className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-bold text-gray-800">Manage Assistants</h3>
+            <Edit className="w-5 h-5 text-zinc-200" />
+            <h3 className="text-lg font-bold text-zinc-200">Manage Assistants</h3>
           </div>
 
           {isLoadingAssistants ? (
             <div className="text-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-              <p className="text-gray-600">Loading assistants...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-200 mx-auto mb-2"></div>
+              <p className="text-zinc-400">Loading assistants...</p>
             </div>
           ) : existingAssistants.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-600">No assistants found. Create your first assistant!</p>
+              <p className="text-zinc-400">No assistants found. Create your first assistant!</p>
               <button
                 onClick={() => setViewMode('create')}
-                className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium transition-all duration-200"
+                className="mt-4 bg-zinc-700 text-zinc-200 px-4 py-2 rounded-lg hover:bg-zinc-600 font-medium transition-all duration-200"
               >
                 Create Assistant
               </button>
@@ -628,13 +629,13 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
               {existingAssistants.map((assistant) => (
                 <div
                   key={assistant.id}
-                  className="border-2 border-gray-200 bg-white rounded-lg p-4 hover:border-gray-300 transition-all duration-200"
+                  className="border-2 border-zinc-700 bg-zinc-800 rounded-lg p-4 hover:border-zinc-600 transition-all duration-200"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-gray-800 mb-1">{assistant.assistant_name}</h4>
+                      <h4 className="font-semibold text-zinc-200 mb-1">{assistant.assistant_name}</h4>
                       {assistant.description && (
-                        <p className="text-sm text-gray-600 mb-2">{assistant.description}</p>
+                        <p className="text-sm text-zinc-400 mb-2">{assistant.description}</p>
                       )}
                     </div>
 
@@ -660,8 +661,8 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
       {viewMode === 'create' && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Plus className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-bold text-gray-800">Create New Assistant</h3>
+            <Plus className="w-5 h-5 text-zinc-200" />
+            <h3 className="text-lg font-bold text-zinc-200">Create New Assistant</h3>
           </div>
 
           <Input 
@@ -682,11 +683,11 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
 
           {/* Language Dropdown */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Language</label>
+            <label className="block text-sm font-semibold text-zinc-400 mb-1">Language</label>
             <select
               value={assistant.language}
               onChange={(e) => updateField("language", e.target.value)}
-              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all duration-200 bg-white appearance-none cursor-pointer"
+              className="w-full px-3 py-2 border-2 border-zinc-700 rounded-lg focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all duration-200 bg-zinc-900 text-zinc-200 appearance-none cursor-pointer"
             >
               {languageOptions.map((lang) => (
                 <option key={lang.id} value={lang.id}>
@@ -705,15 +706,15 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
 
           {/* Conversation Type Selection */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Conversation Type</label>
+            <label className="block text-sm font-semibold text-zinc-400 mb-2">Conversation Type</label>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => updateField("conversation_type", "strict")}
                 className={`px-3 py-2 rounded-lg border-2 transition-all duration-200 font-medium flex-1 text-sm ${
                   assistant.conversation_type === "strict"
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                    ? 'bg-zinc-700 text-zinc-200 border-zinc-700'
+                    : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-600'
                 }`}
               >
                 Strict
@@ -723,14 +724,14 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
                 onClick={() => updateField("conversation_type", "free")}
                 className={`px-3 py-2 rounded-lg border-2 transition-all duration-200 font-medium flex-1 text-sm ${
                   assistant.conversation_type === "free"
-                    ? 'bg-green-600 text-white border-green-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-green-400'
+                    ? 'bg-zinc-700 text-zinc-200 border-zinc-700'
+                    : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-600'
                 }`}
               >
                 Free
               </button>
             </div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-zinc-400 mt-1">
               {assistant.conversation_type === "strict" ? 
                 "Assistant asks exact questions in order" : 
                 "Assistant has natural conversation based on guidelines"
@@ -752,7 +753,7 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
           {/* Level Selection - Only show for free conversation */}
           {assistant.conversation_type === "free" && (
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Student Level</label>
+              <label className="block text-sm font-semibold text-zinc-400 mb-2">Student Level</label>
               <div className="flex flex-wrap gap-2">
                 {levelOptions.map((level) => (
                   <button
@@ -761,8 +762,8 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
                     onClick={() => selectLevel(level.id)}
                     className={`px-3 py-1 rounded-lg border-2 transition-all duration-200 font-medium text-sm ${
                       assistant.levels === level.id
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                        ? 'bg-zinc-700 text-zinc-200 border-zinc-700'
+                        : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-600'
                     }`}
                   >
                     {level.label}
@@ -774,7 +775,7 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
 
           {/* Knowledge Base Files Section */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-zinc-400 mb-2">
               Knowledge Base Files ({kb_array.length})
             </label>
             
@@ -782,17 +783,17 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
             {kb_array.length > 0 && (
               <div className="space-y-2 mb-3">
                 {kb_array.map((kbItem, index) => (
-                  <div key={index} className="border-2 border-green-200 bg-green-50 rounded-lg p-3">
+                  <div key={index} className="border-2 border-zinc-700 bg-zinc-800 rounded-lg p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
-                        <FileText className="w-4 h-4 text-green-600" />
+                        <FileText className="w-4 h-4 text-zinc-200" />
                         <div>
-                          <div className="font-medium text-gray-800 text-sm">{kbItem.name}</div>
-                          <div className="text-xs text-gray-600">
+                          <div className="font-medium text-zinc-200 text-sm">{kbItem.name}</div>
+                          <div className="text-xs text-zinc-400">
                             {kbItem.description && (
                               <span className="block">{kbItem.description}</span>
                             )}
-                            <span className="text-green-600">
+                            <span className="text-zinc-200">
                               Original: {kbItem.originalFile?.name} ({(kbItem.originalFile?.size / 1024 / 1024).toFixed(2)} MB)
                             </span>
                           </div>
@@ -813,19 +814,19 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
 
             {/* File Upload Form */}
             {fileUploadForm.showForm ? (
-              <div className="border-2 border-blue-200 bg-blue-50 rounded-lg p-4 space-y-3">
+              <div className="border-2 border-zinc-700 bg-zinc-800 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-gray-800">Upload Knowledge Base File</h4>
+                  <h4 className="font-medium text-zinc-200">Upload Knowledge Base File</h4>
                   <button
                     type="button"
                     onClick={cancelFileUpload}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-zinc-400 hover:text-zinc-200"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
                 
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-zinc-400">
                   File: {fileUploadForm.file?.name} ({(fileUploadForm.file?.size / 1024 / 1024).toFixed(2)} MB)
                 </div>
                 
@@ -850,14 +851,14 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
                     type="button"
                     onClick={handleFileUpload}
                     disabled={isUploading || !fileUploadForm.name.trim()}
-                    className="flex-1 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200 text-sm"
+                    className="flex-1 bg-zinc-700 text-zinc-200 px-3 py-2 rounded-lg hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200 text-sm"
                   >
                     {isUploading ? 'Uploading...' : 'Upload File'}
                   </button>
                   <button
                     type="button"
                     onClick={cancelFileUpload}
-                    className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-all duration-200 text-sm"
+                    className="px-3 py-2 bg-zinc-800 text-zinc-400 rounded-lg hover:bg-zinc-700 font-medium transition-all duration-200 text-sm"
                   >
                     Cancel
                   </button>
@@ -867,8 +868,8 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
               <div
                 className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-all duration-200 cursor-pointer ${
                   isDragging
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-300 hover:border-gray-400'
+                    ? 'border-zinc-200 bg-zinc-800'
+                    : 'border-zinc-700 hover:border-zinc-600'
                 }`}
                 onDragEnter={handleDragEnter}
                 onDragLeave={handleDragLeave}
@@ -885,18 +886,18 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
                 />
                 
                 <div className="space-y-2">
-                  <div className="text-3xl text-gray-400">📁</div>
-                  <div className="text-sm font-medium text-gray-700">
+                  <div className="text-3xl text-zinc-200">📁</div>
+                  <div className="text-sm font-medium text-zinc-400">
                     {isDragging ? 'Drop file here' : 'Click or drag file to add'}
                   </div>
-                  <div className="text-xs text-gray-400">
+                  <div className="text-xs text-zinc-400">
                     TXT, MD, JSON, CSV, PDF, DOCX (max 10MB)
                   </div>
                 </div>
               </div>
             )}
             
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-zinc-400 mt-1">
               Upload vocabulary lists, conversation topics, or reference materials for the assistant to reference
             </div>
           </div>
@@ -905,7 +906,7 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
             type="button"
             onClick={handleSubmit}
             disabled={isUploading || isCreating || !assistant.teacher_prompt.trim()}
-            className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200"
+            className="w-full bg-zinc-700 text-zinc-200 px-4 py-2 rounded-lg hover:bg-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-200"
           >
             {isCreating ? 'Creating Assistant...' : isUploading ? 'Uploading...' : 'Create Assistant'}
           </button>
@@ -917,7 +918,7 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
         <button 
           type="button"
           onClick={onBack}
-          className="w-full bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-medium transition-all duration-200"
+          className="w-full bg-zinc-800 text-zinc-400 px-4 py-2 rounded-lg hover:bg-zinc-700 font-medium transition-all duration-200"
         >
           Back
         </button>
@@ -939,15 +940,15 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
 function Input({ label, className = "", disabled = false, required = false, ...props }) {
   return (
     <div>
-      <label className="block text-sm font-semibold text-gray-700 mb-1">
+      <label className="block text-sm font-semibold text-zinc-400 mb-1">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-red-400 ml-1">*</span>}
       </label>
       <input
         {...props}
         disabled={disabled}
-        className={`w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all duration-200 ${
-          disabled ? 'bg-gray-100 cursor-not-allowed' : ''
+        className={`w-full px-3 py-2 border border-zinc-700 bg-zinc-900/50 rounded-lg focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all duration-200 text-zinc-200 placeholder-zinc-400 ${
+          disabled ? 'bg-zinc-800 cursor-not-allowed' : ''
         } ${className}`}
       />
     </div>
@@ -957,14 +958,14 @@ function Input({ label, className = "", disabled = false, required = false, ...p
 function Textarea({ label, required = false, ...props }) {
   return (
     <div>
-      <label className="block text-sm font-semibold text-gray-700 mb-1">
+      <label className="block text-sm font-semibold text-zinc-400 mb-1">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-red-400 ml-1">*</span>}
       </label>
       <textarea
         {...props}
         rows={4}
-        className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all duration-200"
+        className="w-full px-3 py-2 border border-zinc-700 bg-zinc-900/50 rounded-lg focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20 outline-none transition-all duration-200 text-zinc-200 placeholder-zinc-400"
       />
     </div>
   );

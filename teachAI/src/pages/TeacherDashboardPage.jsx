@@ -76,18 +76,27 @@ function AuthComponent({ onAuthSuccess }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-100 p-6">
-      <form onSubmit={handleAuth} className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md space-y-4">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-950 to-black flex items-center justify-center p-6 relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-r from-blue-800/30 to-indigo-800/30 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute bottom-32 right-16 w-40 h-40 bg-gradient-to-r from-purple-800/30 to-pink-800/30 rounded-full blur-xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-gradient-to-r from-emerald-800/20 to-teal-800/20 rounded-full blur-lg animate-pulse delay-500"></div>
+      </div>
+
+      <form onSubmit={handleAuth} className="relative z-10 bg-zinc-900/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 w-full max-w-md space-y-4 border border-zinc-800">
         <div className="text-center mb-4">
-          <Headphones className="w-10 h-10 mx-auto text-indigo-600" />
-          <h2 className="text-xl font-bold mt-2">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl">
+            <Headphones className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-xl font-bold mt-2 text-white">
             {isLogin ? "Teacher Login" : "Create Teacher Account"}
           </h2>
         </div>
         <input 
           type="email" 
           placeholder="teacher@school.edu" 
-          className="w-full border px-4 py-2 rounded-lg" 
+          className="w-full bg-zinc-900/50 border border-zinc-700 text-white placeholder-zinc-400 px-4 py-2 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" 
           value={email} 
           onChange={e => setEmail(e.target.value)} 
           required 
@@ -95,7 +104,7 @@ function AuthComponent({ onAuthSuccess }) {
         <input 
           type="password" 
           placeholder="••••••••" 
-          className="w-full border px-4 py-2 rounded-lg" 
+          className="w-full bg-zinc-800/50 border border-zinc-700 text-white placeholder-zinc-400 px-4 py-2 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" 
           value={password} 
           onChange={e => setPassword(e.target.value)} 
           minLength={6} 
@@ -105,23 +114,23 @@ function AuthComponent({ onAuthSuccess }) {
           <input 
             type="text" 
             placeholder="Display name" 
-            className="w-full border px-4 py-2 rounded-lg" 
+            className="w-full bg-zinc-800/50 border border-zinc-700 text-white placeholder-zinc-400 px-4 py-2 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors" 
             value={displayName} 
             onChange={e => setDisplayName(e.target.value)} 
           />
         )}
-        {error && <p className="text-sm text-red-600 bg-red-50 p-2 rounded-lg">{error}</p>}
+        {error && <p className="text-sm text-red-400 bg-red-900/20 p-2 rounded-lg border border-red-800">{error}</p>}
         <button 
           type="submit" 
           disabled={loading} 
-          className="w-full bg-indigo-600 text-white py-2 rounded-lg disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-2 rounded-lg disabled:opacity-50 hover:from-blue-700 hover:to-indigo-800 transition-all"
         >
           {loading ? "Please wait…" : isLogin ? "Sign In" : "Create Account"}
         </button>
         <button 
           type="button" 
           onClick={() => setIsLogin(!isLogin)} 
-          className="text-indigo-600 text-sm mt-2"
+          className="text-blue-400 text-sm mt-2 hover:text-blue-300 transition-colors"
         >
           {isLogin ? "Need an account? Sign up" : "Already have an account? Sign in"}
         </button>
@@ -253,10 +262,17 @@ export default function TeacherDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-100">
-        <div className="text-center">
-          <Headphones className="w-10 h-10 animate-bounce text-indigo-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-950 to-black flex items-center justify-center relative overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-r from-blue-800/30 to-indigo-800/30 rounded-full blur-xl animate-pulse"></div>
+          <div className="absolute bottom-32 right-16 w-40 h-40 bg-gradient-to-r from-purple-800/30 to-pink-800/30 rounded-full blur-xl animate-pulse delay-1000"></div>
+        </div>
+        <div className="relative z-10 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl">
+            <Headphones className="w-8 h-8 text-white animate-bounce" />
+          </div>
+          <p className="text-zinc-400">Loading...</p>
         </div>
       </div>
     );
@@ -265,18 +281,25 @@ export default function TeacherDashboardPage() {
   if (!user || !teacher) return <AuthComponent onAuthSuccess={setUser} />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-100 flex">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-950 to-black flex relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-20 w-32 h-32 bg-gradient-to-r from-emerald-800/20 to-teal-800/20 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute bottom-32 right-16 w-40 h-40 bg-gradient-to-r from-blue-800/20 to-indigo-800/20 rounded-full blur-xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-gradient-to-r from-purple-800/15 to-pink-800/15 rounded-full blur-lg animate-pulse delay-500"></div>
+      </div>
+
       <StatusToast status={status} />
       
       {/* Side Navigation */}
-      <div className="w-80 bg-white shadow-xl border-r border-gray-200 flex flex-col min-h-screen justify-between">
+      <div className="relative z-10 w-80 bg-zinc-900/95 backdrop-blur-xl shadow-2xl border-r border-zinc-800 flex flex-col min-h-screen justify-between">
         <div>
-          <div className="p-6 border-b border-gray-200">
-            <h1 className="text-2xl font-bold text-gray-800">Teacher Portal</h1>
-            <p className="text-gray-600 text-sm">Welcome, {teacher.display_name}</p>
+          <div className="p-6 border-b border-zinc-800">
+            <h1 className="text-2xl font-bold text-white">Teacher Portal</h1>
+            <p className="text-zinc-400 text-sm">Welcome, {teacher.display_name}</p>
             <div className="mt-2 flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-zinc-500">
                 {isConnected ? 'Connected' : 'Disconnected'}
               </span>
             </div>
@@ -285,53 +308,53 @@ export default function TeacherDashboardPage() {
           <nav className="flex flex-col">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-3 px-6 py-4 text-left hover:bg-gray-50 transition-colors ${
-                activeTab === 'dashboard' ? 'bg-blue-50 border-r-4 border-blue-600 text-blue-700' : 'text-gray-700'
+              className={`flex items-center gap-3 px-6 py-4 text-left hover:bg-zinc-800/50 transition-colors ${
+                activeTab === 'dashboard' ? 'bg-blue-900/30 border-r-4 border-blue-500 text-blue-400' : 'text-zinc-300'
               }`}
             >
               <Monitor className="w-5 h-5" />
               <div>
                 <div className="font-medium">Dashboard</div>
-                <div className="text-sm text-gray-500">Monitor active calls</div>
+                <div className="text-sm text-zinc-500">Monitor active calls</div>
               </div>
             </button>
 
             <button
               onClick={() => setActiveTab('customize')}
-              className={`flex items-center gap-3 px-6 py-4 text-left hover:bg-gray-50 transition-colors ${
-                activeTab === 'customize' ? 'bg-blue-50 border-r-4 border-blue-600 text-blue-700' : 'text-gray-700'
+              className={`flex items-center gap-3 px-6 py-4 text-left hover:bg-zinc-800/50 transition-colors ${
+                activeTab === 'customize' ? 'bg-blue-900/30 border-r-4 border-blue-500 text-blue-400' : 'text-zinc-300'
               }`}
             >
               <Settings className="w-5 h-5" />
               <div>
                 <div className="font-medium">Assistant Builder</div>
-                <div className="text-sm text-gray-500">Create & customize assistants</div>
+                <div className="text-sm text-zinc-500">Create & customize assistants</div>
               </div>
             </button>
 
             <button
               onClick={() => setActiveTab('history')}
-              className={`flex items-center gap-3 px-6 py-4 text-left hover:bg-gray-50 transition-colors ${
-                activeTab === 'history' ? 'bg-blue-50 border-r-4 border-blue-600 text-blue-700' : 'text-gray-700'
+              className={`flex items-center gap-3 px-6 py-4 text-left hover:bg-zinc-800/50 transition-colors ${
+                activeTab === 'history' ? 'bg-blue-900/30 border-r-4 border-blue-500 text-blue-400' : 'text-zinc-300'
               }`}
             >
               <History className="w-5 h-5" />
               <div>
                 <div className="font-medium">Call History</div>
-                <div className="text-sm text-gray-500">View all previous calls</div>
+                <div className="text-sm text-zinc-500">View all previous calls</div>
               </div>
             </button>
           </nav>
         </div>
 
         {/* Bottom Section */}
-        <div className="p-6 border-t border-gray-200">
+        <div className="p-6 border-t border-zinc-800">
           <button
             onClick={() => setActiveTab('profile')}
             className={`w-full flex items-center gap-3 px-4 py-3 mb-3 rounded-lg text-left transition-colors ${
               activeTab === 'profile'
-                ? 'bg-blue-50 text-blue-700 border border-blue-600'
-                : 'hover:bg-gray-100 text-gray-700'
+                ? 'bg-blue-900/30 text-blue-400 border border-blue-700'
+                : 'hover:bg-zinc-800/50 text-zinc-300'
             }`}
           >
             <User className="w-5 h-5" />
@@ -339,7 +362,7 @@ export default function TeacherDashboardPage() {
           </button>
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-3 text-zinc-300 hover:bg-red-900/30 hover:text-red-400 rounded-lg transition-colors"
           >
             <LogOut className="w-5 h-5" />
             <span>Sign Out</span>
@@ -347,22 +370,21 @@ export default function TeacherDashboardPage() {
         </div>
       </div>
 
-
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="relative z-10 flex-1 flex flex-col">
         {activeTab === 'dashboard' ? (
           <div className="flex-1 p-6">
             <div className="max-w-6xl mx-auto">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h2 className="text-3xl font-bold text-gray-800 mb-2">Call Monitor</h2>
-                  <p className="text-gray-600">Monitor student conversations and view reports</p>
+                  <h2 className="text-3xl font-bold text-white mb-2">Call Monitor</h2>
+                  <p className="text-zinc-400">Monitor student conversations and view reports</p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="bg-blue-100 px-4 py-2 rounded-full text-sm font-semibold text-blue-700">
+                  <div className="bg-blue-900/50 border border-blue-800 px-4 py-2 rounded-full text-sm font-semibold text-blue-400">
                     {activeCalls.length} Active • {endedCalls.length} Ended
                   </div>
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-xl">
                     <Headphones className="w-6 h-6 text-white" />
                   </div>
                 </div>
@@ -370,13 +392,13 @@ export default function TeacherDashboardPage() {
 
               {/* Active Calls */}
               <div className="mb-8">
-                <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                  <Activity className="w-6 h-6 text-green-600" />
+                <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                  <Activity className="w-6 h-6 text-green-500" />
                   Active Calls ({activeCalls.length})
                 </h3>
                 {activeCalls.length === 0 ? (
-                  <div className="bg-white rounded-2xl p-8 text-center">
-                    <p className="text-gray-500">No active calls</p>
+                  <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800 rounded-2xl p-8 text-center">
+                    <p className="text-zinc-500">No active calls</p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
@@ -390,8 +412,8 @@ export default function TeacherDashboardPage() {
               {/* Ended Calls */}
               {endedCalls.length > 0 && (
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <PhoneOff className="w-6 h-6 text-gray-600" />
+                  <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                    <PhoneOff className="w-6 h-6 text-zinc-400" />
                     Recent Ended Calls ({endedCalls.length})
                   </h3>
                   <div className="grid gap-4">
@@ -412,7 +434,7 @@ export default function TeacherDashboardPage() {
             </div>
           </div>
         ) : activeTab === 'customize' ? (
-          <div className="flex-1 bg-white">
+          <div className="flex-1 bg-zinc-900/50 backdrop-blur-sm">
             <AssistantCustomizer 
               showStatus={showStatus}
               BACKEND_URL={BACKEND_URL}
@@ -432,36 +454,36 @@ export default function TeacherDashboardPage() {
         ) : (
           <div className="flex-1 p-6">
             <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-2xl shadow-lg p-8">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6">Profile & Settings</h2>
+              <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800 rounded-2xl shadow-2xl p-8">
+                <h2 className="text-2xl font-bold text-white mb-6">Profile & Settings</h2>
                 
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Display Name
                     </label>
                     <input
                       type="text"
                       value={teacher.display_name}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50"
+                      className="w-full px-4 py-3 bg-zinc-800/50 border border-zinc-700 text-white rounded-lg"
                       readOnly
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
                       Email
                     </label>
                     <input
                       type="email"
                       value={user.email}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50"
+                      className="w-full px-4 py-3 bg-zinc-900/50 border border-zinc-700 text-white rounded-lg"
                       readOnly
                     />
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <label className="text-sm font-medium text-zinc-300 mb-2 flex items-center gap-2">
                       <Key className="w-4 h-4" />
                       Student Access Key
                     </label>
@@ -469,7 +491,7 @@ export default function TeacherDashboardPage() {
                       <input
                         type="text"
                         value={teacher.student_key}
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 font-mono text-lg"
+                        className="flex-1 px-4 py-3 bg-zinc-800/50 border border-zinc-700 text-white rounded-lg font-mono text-lg"
                         readOnly
                       />
                       <button
@@ -477,12 +499,12 @@ export default function TeacherDashboardPage() {
                           navigator.clipboard.writeText(teacher.student_key);
                           showStatus("Key copied to clipboard!", "success");
                         }}
-                        className="px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                        className="px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-lg hover:from-blue-700 hover:to-indigo-800 transition-all"
                       >
                         Copy
                       </button>
                     </div>
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="text-sm text-zinc-500 mt-2">
                       Share this key with your students so they can access your assistants.
                     </p>
                   </div>

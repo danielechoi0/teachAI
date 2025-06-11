@@ -170,31 +170,47 @@ export default function EnhancedListenCard({ callId = "demo-call", student = "De
 
   useEffect(() => stop, []);
 
+  const getStatusColor = () => {
+    switch (status) {
+      case "connected": return "text-emerald-400";
+      case "connecting": return "text-blue-400";
+      case "error": return "text-red-400";
+      default: return "text-zinc-500";
+    }
+  };
+
   return (
-    <div className="border rounded-xl p-4 shadow flex flex-col gap-4">
+    <div className="bg-zinc-900/95 backdrop-blur-xl rounded-2xl shadow-2xl p-6 border border-zinc-800 flex flex-col gap-6">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold">{student}</h3>
-        <span className="text-xs italic">{status}</span>
+        <h3 className="font-medium text-white text-xl">{student}</h3>
+        <span className={`text-xs italic ${getStatusColor()}`}>{status}</span>
       </div>
 
       <div className="flex items-center gap-4">
         <button
           onClick={isListening ? stop : listen}
-          className="px-4 py-2 rounded text-white bg-indigo-600 hover:bg-indigo-700"
+          className={`px-6 py-3 rounded-xl text-white font-medium transition-all duration-300 shadow-lg ${
+            isListening 
+              ? "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 hover:shadow-xl hover:scale-[1.02]" 
+              : "bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 hover:shadow-xl hover:scale-[1.02]"
+          }`}
         >
           {isListening ? "Stop" : "Listen"}
         </button>
 
-        <div className="h-2 w-24 bg-gray-200 rounded overflow-hidden">
-          <div className="h-full bg-green-500 transition-all" style={{ width: `${Math.min(1, audioLevel) * 100}%` }} />
+        <div className="h-3 w-24 bg-zinc-800 rounded-full overflow-hidden border border-zinc-700">
+          <div 
+            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-100" 
+            style={{ width: `${Math.min(1, audioLevel) * 100}%` }} 
+          />
         </div>
 
-        <span className="ml-auto text-sm text-gray-500">
+        <span className="ml-auto text-sm text-zinc-400 font-mono">
           {new Date(duration * 1000).toISOString().substr(14, 5)}
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <input
           type="range"
           min="0"
@@ -203,11 +219,18 @@ export default function EnhancedListenCard({ callId = "demo-call", student = "De
           value={volume}
           onChange={(e) => setVolume(+e.target.value)}
           disabled={isMuted}
-          className="flex-1"
+          className="flex-1 h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer volume-slider"
+          style={{
+            background: `linear-gradient(to right, #059669 0%, #059669 ${volume * 100}%, #27272a ${volume * 100}%, #27272a 100%)`
+          }}
         />
         <button
           onClick={() => setIsMuted(!isMuted)}
-          className="px-3 py-1 border rounded text-xs"
+          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${
+            isMuted 
+              ? "bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700" 
+              : "bg-gradient-to-r from-blue-600 to-indigo-700 text-white hover:from-blue-700 hover:to-indigo-800 shadow-lg"
+          }`}
         >
           {isMuted ? "Un-mute" : "Mute"}
         </button>
@@ -215,61 +238,63 @@ export default function EnhancedListenCard({ callId = "demo-call", student = "De
 
       {/* Only show messaging interface when listening */}
       {isListening && (
-        <div className="border-t pt-3 flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700">Send message in real time:</label>
-            <div className="flex gap-2">
+        <div className="border-t border-zinc-800 pt-6 flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <label className="text-sm font-medium text-zinc-300">Send message in real time:</label>
+            <div className="flex gap-3">
               <textarea
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type a message for the AI to speak..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md resize-none h-20 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="flex-1 px-4 py-3 bg-zinc-800/80 border border-zinc-700 rounded-xl resize-none h-20 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-white placeholder-zinc-500 backdrop-blur-sm transition-all duration-300"
                 disabled={isSending}
               />
               <button
                 onClick={sendMessage}
                 disabled={!message.trim() || !controlUrl || isSending}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed self-end"
+                className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl hover:from-emerald-700 hover:to-teal-800 disabled:from-zinc-700 disabled:to-zinc-800 disabled:cursor-not-allowed self-end shadow-lg transition-all duration-300 font-medium"
               >
                 {isSending ? "Sending..." : "Send"}
               </button>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <input
                 type="checkbox"
                 id={`endCall-${callId}`}
                 checked={endCallAfterSpoken}
                 onChange={(e) => setEndCallAfterSpoken(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-zinc-600 rounded bg-zinc-800 accent-emerald-600"
               />
-              <label htmlFor={`endCall-${callId}`} className="text-sm text-gray-600">
+              <label htmlFor={`endCall-${callId}`} className="text-sm text-zinc-400">
                 End call after message is spoken
               </label>
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-gray-700">
+          <div className="flex flex-col gap-3">
+            <label className="text-sm font-medium text-zinc-300">
               Send direct message to student (live):
-              <span className="text-xs text-gray-500 ml-2">
+              <span className={`text-xs ml-2 ${
+                socketRef.current?.connected ? "text-emerald-400" : "text-red-400"
+              }`}>
                 {socketRef.current?.connected ? "Connected" : "Not connected"}
               </span>
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <input
                 type="text"
                 value={directMessage}
                 onChange={(e) => setDirectMessage(e.target.value)}
                 onKeyPress={handleDirectKeyPress}
                 placeholder="Type a live message..."
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-4 py-3 bg-zinc-800/80 border border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-zinc-500 backdrop-blur-sm transition-all duration-300"
                 disabled={isDirectSending}
               />
               <button
                 onClick={sendDirectMessage}
                 disabled={!directMessage.trim() || isDirectSending || !socketRef.current?.connected}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl hover:from-blue-700 hover:to-indigo-800 disabled:from-zinc-700 disabled:to-zinc-800 disabled:cursor-not-allowed shadow-lg transition-all duration-300 font-medium"
               >
                 {isDirectSending ? "Sending..." : "Send"}
               </button>
@@ -277,6 +302,34 @@ export default function EnhancedListenCard({ callId = "demo-call", student = "De
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .volume-slider::-webkit-slider-thumb {
+          appearance: none;
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background: #10b981;
+          cursor: pointer;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+          transition: all 0.2s;
+        }
+        
+        .volume-slider::-webkit-slider-thumb:hover {
+          transform: scale(1.1);
+          background: #059669;
+        }
+        
+        .volume-slider::-moz-range-thumb {
+          height: 16px;
+          width: 16px;
+          border-radius: 50%;
+          background: #10b981;
+          cursor: pointer;
+          border: none;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+      `}</style>
     </div>
   );
 }
