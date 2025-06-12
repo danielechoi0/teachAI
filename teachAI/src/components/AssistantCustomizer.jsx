@@ -343,14 +343,14 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
     const level = assistant.level || "Intermediate";
     switch (level) {
       case "Beginner":
-        return 2.0;
+        return 0.8;
       case "Native":
         return 0.4;
       case "Advanced":
-        return 0.7;
+        return 0.4;
       case "Intermediate":
       default:
-        return 1.0;
+        return 0.6;
     }
   }
 
