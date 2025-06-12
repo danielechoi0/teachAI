@@ -329,7 +329,7 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
     const language = assistant.language || "English";
     switch (language) {
       case "Spanish":
-        return "es-US";
+        return "es-ES";
       case "Italian":
         return "it-IT";
       case "French":
