@@ -18,12 +18,12 @@ export default function SignInPage() {
           <div className="w-24 h-24 mx-auto mb-8 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl transform hover:scale-105 transition-all duration-300">
             <img src="/favicon.png" alt="Edusona Logo" className="w-18 h-18" />
           </div>
-          <h1 className="text-4xl font-normal text-white mb-3">
+          <h1 className="text-4xl font-semi-bold text-white mb-3">
             <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
               Edusona
             </span>
           </h1>
-          <p className="text-zinc-400 text-lg font-normal">Personalized AI conversation practice</p>
+          <p className="text-zinc-400 text-lg font-normal">a personalized conversation platform</p>
         </div>
 
         <div className="space-y-6">
