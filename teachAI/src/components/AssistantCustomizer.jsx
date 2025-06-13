@@ -304,7 +304,6 @@ You will talk in this level of speaking proficiency: ${level}.
 If given knowledge base from teacher, if it is a list of vocab words, use those words in your responses/questions.
 If given questions to ask, you will ask them exactly as given.
 DO NOT HELP THE STUDENT IF THEY ASK FOR HELP. DO NOT STRAY AWAY FROM THE CONVERSATION TOPIC.
-Interrupt user if they go beyond the time they are given per response.
 
 [Task]
 Have a conversation with the student. Talk with ${level} proficiency in this ${language} language.`;
@@ -393,6 +392,10 @@ Have a conversation with the student. Talk with ${level} proficiency in this ${l
         voice: {
           provider: "azure",
           voiceId: set_voice()
+        },
+        transcriber: {
+          provider: "azure",
+          language: set_language()
         },
         server: {
           url: BACKEND_URL + "/vapi-webhook"
